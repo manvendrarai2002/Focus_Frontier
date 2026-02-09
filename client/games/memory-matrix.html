@@ -1,0 +1,615 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Memory Matrix</title>
+  <link rel="stylesheet" href="../assets/style.css" />
+  <link rel="stylesheet" href="../assets/immersive-game-styles.css" />
+  <style>
+    .tile {
+      aspect-ratio: 1;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      font-weight: 800;
+      user-select: none;
+    }
+    .tile:hover { transform: scale(1.05); border-color: var(--primary) !important; }
+    .tile.active { animation: glow 0.3s ease; }
+    @keyframes glow {
+      0%, 100% { box-shadow: 0 0 0 rgba(56,189,248,0); }
+      50% { box-shadow: 0 0 20px rgba(56,189,248,0.8); }
+    }
+    .high-score-banner {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) scale(0);
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      padding: 30px 50px;
+      border-radius: 20px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+      z-index: 999;
+      animation: popIn 0.5s ease forwards;
+    }
+    @keyframes popIn {
+      to { transform: translate(-50%, -50%) scale(1); }
+    }
+    
+    /* Countdown overlay */
+    .countdown-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.95);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10000;
+      animation: fadeIn 0.3s ease;
+    }
+    
+    .countdown-number {
+      font-size: 150px;
+      font-weight: 900;
+      color: #fff;
+      text-shadow: 0 0 40px rgba(168, 85, 247, 0.8), 0 0 80px rgba(168, 85, 247, 0.4);
+      animation: countdownPulse 0.8s ease;
+    }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    
+    @keyframes countdownPulse {
+      0% { transform: scale(0.5); opacity: 0; }
+      50% { transform: scale(1.2); opacity: 1; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    
+    /* Game window */
+    .game-window {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: #0a0f1e;
+      z-index: 9999;
+      display: none;
+      animation: slideIn 0.4s ease;
+    }
+    
+    .game-window.active {
+      display: flex;
+      flex-direction: column;
+    }
+    
+    @keyframes slideIn {
+      from { transform: translateY(100%); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+    
+    /* Fix grid sizing */
+    .game-grid-container {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      overflow: hidden;
+    }
+    
+    .game-grid {
+      width: 100%;
+      max-width: 600px;
+      max-height: 600px;
+      aspect-ratio: 1;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="navbar">
+      <div class="brand"><span class="tag">Game</span><a href="../index.html">Focus Frontier</a> / Memory Matrix</div>
+      <div class="badges" id="user-chip"></div>
+    </div>
+  </header>
+  <main id="main-menu">
+    <div class="section-title">
+      <h2>Memory Matrix</h2>
+      <div class="badges">
+        <span class="badge">Working Memory</span>
+        <span class="badge" id="high-score">Best: 0</span>
+      </div>
+    </div>
+    <div class="split">
+      <div class="panel">
+        <div class="stat-line"><span>Score</span><strong id="score">0</strong></div>
+        <div class="stat-line"><span>Round</span><strong id="round">0</strong></div>
+        <div class="stat-line"><span>Time</span><strong id="time">∞</strong></div>
+        <div class="stat-line"><span>Lives</span><strong id="lives">3</strong></div>
+        <div class="stat-line"><span>Streak</span><strong id="streak">0</strong></div>
+        <div class="stat-line"><span>Playback speed</span><strong id="speed">1.0x</strong></div>
+        <div class="stat-line"><span>Mode</span>
+          <select id="mode" aria-label="Mode" style="padding:6px 10px;border-radius:8px;background:#0f182b;color:var(--text);border:1px solid rgba(255,255,255,0.08)">
+            <option value="timed">Timed</option>
+            <option value="elimination">Elimination</option>
+          </select>
+        </div>
+        <div class="stat-line" id="time-row"><span>Time limit</span>
+          <select id="time-limit" aria-label="Time limit" style="padding:6px 10px;border-radius:8px;background:#0f182b;color:var(--text);border:1px solid rgba(255,255,255,0.08)">
+            <option value="30">30s</option>
+            <option value="60" selected>60s</option>
+            <option value="90">90s</option>
+            <option value="120">120s</option>
+            <option value="180">180s</option>
+          </select>
+        </div>
+        <div class="stat-line"><span>Difficulty</span>
+          <select id="difficulty" style="padding:6px 10px;border-radius:8px;background:#0f182b;color:var(--text);border:1px solid rgba(255,255,255,0.08)">
+            <option value="beginner">Beginner (4x4)</option>
+            <option value="intermediate">Intermediate (5x5)</option>
+            <option value="advanced">Advanced (6x6)</option>
+          </select>
+        </div>
+        <div style="display:flex; gap:10px; margin-top:14px;">
+          <button class="btn" id="start">Play</button>
+          <button class="btn secondary" id="help">Tutorial</button>
+          <button class="btn secondary" onclick="window.location='/client/index.html'">Back to Hub</button>
+        </div>
+        <div style="margin-top:12px;">
+          <button class="btn secondary" id="sound-toggle" style="width:100%">🔊 Sound ON</button>
+        </div>
+      </div>
+      <div class="game-stage" id="grid" style="display:grid;gap:10px;padding:18px;max-width:500px;max-height:500px;margin:auto;"></div>
+    </div>
+  </main>
+
+  <!-- Game Window -->
+  <div class="game-window" id="game-window">
+    <div style="padding: 20px; height: 100%; display: flex; flex-direction: column;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h2 style="margin: 0; color: #fff; font-size: 24px;">Memory Matrix</h2>
+        <div style="display: flex; gap: 20px; align-items: center;">
+          <div style="color: #fbbf24; font-weight: 600;">Score: <span id="game-score">0</span></div>
+          <div style="color: #38bdf8; font-weight: 600;">Round: <span id="game-round">0</span></div>
+          <div style="color: #f43f5e; font-weight: 600;">Lives: <span id="game-lives">3</span></div>
+          <div style="color: #a855f7; font-weight: 600;">Streak: <span id="game-streak">0</span></div>
+          <div style="color: #10b981; font-weight: 600;">Time: <span id="game-time">∞</span></div>
+          <button class="btn secondary" id="quit-game">Quit</button>
+        </div>
+      </div>
+      <div class="game-grid-container">
+        <div class="game-grid" id="game-grid" style="display:grid;gap:10px;"></div>
+      </div>
+    </div>
+  </div>
+
+
+
+  <script src="../assets/app.js"></script>
+  <script src="../assets/game-utils.js"></script>
+  <script src="../assets/ml-client.js"></script>
+  <script>
+    renderUserChip('#user-chip');
+    const grid = document.getElementById('grid');
+    const scoreEl = document.getElementById('score');
+    const roundEl = document.getElementById('round');
+    const livesEl = document.getElementById('lives');
+    const timeEl = document.getElementById('time');
+    const streakEl = document.getElementById('streak');
+    const speedEl = document.getElementById('speed');
+    const diffEl = document.getElementById('difficulty');
+    const highScoreEl = document.getElementById('high-score');
+    const modeEl = document.getElementById('mode');
+    const timeLimitEl = document.getElementById('time-limit');
+    const timeRow = document.getElementById('time-row');
+
+    // Game window elements
+    const gameWindow = document.getElementById('game-window');
+    const gameGrid = document.getElementById('game-grid');
+    const gameScoreEl = document.getElementById('game-score');
+    const gameRoundEl = document.getElementById('game-round');
+    const gameLivesEl = document.getElementById('game-lives');
+    const gameStreakEl = document.getElementById('game-streak');
+    const gameTimeEl = document.getElementById('game-time');
+
+    const sound = new GameUtils.SoundManager();
+    const stats = new GameUtils.GameStats('memoryMatrix');
+    const tracker = new GameUtils.PerformanceTracker();
+    const mlClient = new MLClient();
+
+    let sessionId = null;
+    let sequence = [];
+    let player = [];
+    let round = 0;
+    let score = 0;
+    let lives = 3;
+    let streak = 0;
+    let paused = false;
+    let gridSize = 4;
+    let totalTimer = null;
+    let ended = false;
+    let patternLength = 1;
+    let repeatsAtCurrentLength = 0;
+
+    // Display high score
+    highScoreEl.textContent = `Best: ${stats.stats.highScore}`;
+    scoreEl.textContent = '0';
+
+    // Tutorial
+    const tutorial = new GameUtils.Tutorial([
+      { title: 'Welcome to Memory Matrix!', content: 'Watch the tiles light up in sequence, then repeat the pattern by clicking the tiles in the same order.' },
+      { title: 'Getting Started', content: 'The sequence gets longer each round. Choose your difficulty to adjust grid size and speed.' },
+      { title: 'Lives & Streak', content: 'You start with lives. Each mistake costs a life. Build streaks for bonus points!' }
+    ], 'tutorial_memoryMatrix');
+
+    document.getElementById('help').addEventListener('click', () => {
+      tutorial.shown = false;
+      tutorial.show();
+    });
+
+    document.getElementById('sound-toggle').addEventListener('click', (e) => {
+      const enabled = sound.toggle();
+      e.target.textContent = enabled ? '🔊 Sound ON' : '🔇 Sound OFF';
+    });
+
+    function getGridSize() {
+      if (diffEl.value === 'advanced') return 6;
+      if (diffEl.value === 'intermediate') return 5;
+      return 4;
+    }
+
+    function buildGrid(targetGrid) {
+      gridSize = getGridSize();
+      targetGrid.innerHTML = '';
+      targetGrid.style.gridTemplateColumns = `repeat(${gridSize}, 1fr)`;
+      const total = gridSize * gridSize;
+      
+      for (let i = 0; i < total; i++) {
+        const tile = document.createElement('div');
+        tile.className = 'tile';
+        tile.style.background = '#1f2a44';
+        tile.style.borderRadius = '12px';
+        tile.style.border = '1px solid rgba(255,255,255,0.08)';
+        tile.dataset.index = i;
+        tile.onclick = () => handleClick(i, tile);
+        targetGrid.appendChild(tile);
+      }
+    }
+
+    function showCountdown() {
+      return new Promise((resolve) => {
+        const overlay = document.createElement('div');
+        overlay.className = 'countdown-overlay';
+        document.body.appendChild(overlay);
+
+        let count = 3;
+        
+        function updateCountdown() {
+          overlay.innerHTML = `<div class=\"countdown-number\">${count}</div>`;
+          sound.click();
+          
+          if (count > 1) {
+            count--;
+            setTimeout(updateCountdown, 1000);
+          } else {
+            setTimeout(() => {
+              overlay.innerHTML = '<div class=\"countdown-number\" style=\"color: #a855f7;\">GO!</div>';
+              sound.success();
+              setTimeout(() => {
+                overlay.remove();
+                resolve();
+              }, 800);
+            }, 1000);
+          }
+        }
+        
+        updateCountdown();
+      });
+    }
+
+    function openGameWindow() {
+      gameWindow.classList.add('active');
+      document.getElementById('main-menu').style.display = 'none';
+    }
+
+    function closeGameWindow() {
+      gameWindow.classList.remove('active');
+      document.getElementById('main-menu').style.display = 'block';
+      // Update main menu displays
+      scoreEl.textContent = score;
+      roundEl.textContent = round;
+      livesEl.textContent = lives;
+      streakEl.textContent = streak;
+    }
+
+    function adjustByDifficulty() {
+      if (modeEl.value === 'elimination') {
+        lives = 1;
+      } else if (diffEl.value === 'advanced') { lives = 2; }
+      else if (diffEl.value === 'intermediate') { lives = 3; }
+      else { lives = 4; }
+      speedEl.textContent = diffEl.value === 'advanced' ? '1.35x' : diffEl.value === 'intermediate' ? '1.15x' : '1.0x';
+      livesEl.textContent = lives;
+      gameLivesEl.textContent = lives;
+    }
+
+    function syncModeUI() {
+      const timed = modeEl.value === 'timed';
+      timeRow.style.display = timed ? 'flex' : 'none';
+      timeEl.textContent = timed ? timeLimitEl.value : '∞';
+    }
+
+    function startTotalTimer() {
+      clearInterval(totalTimer);
+      if (modeEl.value !== 'timed') {
+        gameTimeEl.textContent = '∞';
+        return;
+      }
+      let t = parseInt(timeLimitEl.value, 10);
+      gameTimeEl.textContent = t;
+      totalTimer = setInterval(() => {
+        if (paused || ended) return;
+        t -= 1;
+        gameTimeEl.textContent = t;
+        if (t <= 0) endGame('Time up');
+      }, 1000);
+    }
+
+    async function startGame() {
+      if (tutorial.shouldShow()) {
+        tutorial.show(() => startGame());
+        return;
+      }
+
+      // Load ML difficulty recommendation
+      const mlRecommendation = await mlClient.getDifficultyRecommendation('memoryMatrix');
+      if (mlRecommendation?.autoAdjust) {
+        diffEl.value = mlRecommendation.suggestedDifficulty;
+      }
+      if (mlRecommendation) {
+        mlClient.displayDifficultyWidget('difficulty-widget-memory', mlRecommendation);
+      }
+
+      // Show countdown
+      await showCountdown();
+      
+      // Open game window
+      openGameWindow();
+      
+      paused = false;
+      ended = false;
+      adjustByDifficulty();
+      round = 0;
+      score = 0;
+      sequence = [];
+      player = [];
+      streak = 0;
+      patternLength = 1;
+      repeatsAtCurrentLength = 0;
+      gameScoreEl.textContent = '0';
+      gameStreakEl.textContent = '0';
+      buildGrid(gameGrid);
+      sessionId = await startSession('memoryMatrix', diffEl.value);
+      tracker.track('game_started');
+      startTotalTimer();
+      nextRound();
+    }
+
+    async function nextRound() {
+      if (paused) return;
+      round += 1;
+      gameRoundEl.textContent = round;
+      
+      // Progressive pattern system
+      // Pattern lengths: 1, 2, 3, 3, 3, 4, 4, 4, 5, 5, 5, etc.
+      if (patternLength >= 3) {
+        repeatsAtCurrentLength++;
+        if (repeatsAtCurrentLength >= 3) {
+          patternLength++;
+          repeatsAtCurrentLength = 0;
+        }
+      } else {
+        patternLength++;
+        repeatsAtCurrentLength = 0;
+      }
+      
+      // Generate new sequence with current pattern length
+      const total = gridSize * gridSize;
+      sequence = [];
+      for (let i = 0; i < patternLength; i++) {
+        sequence.push(Math.floor(Math.random() * total));
+      }
+      
+      player = [];
+      await playSequence();
+      sound.click();
+    }
+
+    function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+    async function playSequence() {
+      const tiles = Array.from(gameGrid.children);
+      const blink = diffEl.value === 'advanced' ? 280 : diffEl.value === 'intermediate' ? 360 : 420;
+      for (let i = 0; i < sequence.length; i++) {
+        const idx = sequence[i];
+        tiles[idx].textContent = i + 1;
+        tiles[idx].style.background = '#38bdf8';
+        tiles[idx].classList.add('active');
+        sound.play(800 + i * 100, 50);
+        sound.play(800 + i * 100, 50);
+        await delay(blink);
+        tiles[idx].style.background = '#1f2a44';
+        tiles[idx].textContent = '';
+        tiles[idx].classList.remove('active');
+        await delay(180);
+      }
+    }
+
+    async function handleClick(idx, tile) {
+      if (paused || !sequence.length || player.length >= sequence.length) return;
+      
+      player.push(idx);
+      tile.style.background = '#34d399';
+      GameUtils.VisualFeedback.pulse(tile, 1.15);
+      sound.click();
+      
+      await delay(120);
+      tile.style.background = '#1f2a44';
+      
+      const correct = sequence[player.length - 1] === idx;
+      
+      if (!correct) {
+        sound.error();
+        GameUtils.VisualFeedback.shake(gameGrid);
+        toast('Wrong tile!', 'error');
+        tracker.track('error', { round, score });
+        
+        if (modeEl.value === 'elimination') {
+          // Elimination mode: game over on first mistake
+          await recordMetrics(sessionId, [{ 
+            name: 'score', 
+            value: score, 
+            skill: 'working_memory', 
+            difficulty: diffEl.value 
+          }], false);
+          return endGame('Mistake - eliminated');
+        } else {
+          // Timed mode: deduct 1 point and lose a life
+          score = Math.max(0, score - 1);
+          lives -= 1;
+          streak = 0;
+          
+          gameScoreEl.textContent = score;
+          gameLivesEl.textContent = lives;
+          gameStreakEl.textContent = '0';
+          
+          await recordMetrics(sessionId, [{ 
+            name: 'error', 
+            value: 1, 
+            skill: 'working_memory', 
+            difficulty: diffEl.value 
+          }], false);
+          
+          if (lives <= 0) {
+            return endGame('Out of lives');
+          }
+          
+          // Show remaining sequence after error
+          await delay(500);
+          await playSequence();
+          player = [];
+        }
+      }
+      
+      if (player.length === sequence.length && correct) {
+        // Award 5 points for correct pattern
+        score += 5;
+        streak += 1;
+        
+        gameScoreEl.textContent = score;
+        gameStreakEl.textContent = streak;
+        sound.success();
+        
+        // Bonus for streaks
+        if (streak > 0 && streak % 5 === 0) {
+          toast(`🔥 ${streak} Round Streak!`, 'info');
+          GameUtils.VisualFeedback.particle(gameGrid, gameGrid.clientWidth / 2, gameGrid.clientHeight / 2, '#fbbf24');
+        }
+        
+        await recordMetrics(sessionId, [{ 
+          name: 'score', 
+          value: score, 
+          skill: 'working_memory', 
+          difficulty: diffEl.value 
+        }], false);
+        
+        tracker.track('round_completed', { round, streak, score });
+        await delay(500);
+        nextRound();
+      }
+    }
+
+    async function endGame(message) {
+      if (ended) return;
+      ended = true;
+      clearInterval(totalTimer);
+      const isHighScore = stats.update(score, streak);
+      if (isHighScore && score > 0) {
+        showHighScoreBanner(score);
+        highScoreEl.textContent = `Best: ${score}`;
+      }
+      toast(`${message}! Score: ${score}`, 'error');
+      await recordMetrics(sessionId, [{
+        name: 'score',
+        value: score,
+        skill: 'working_memory',
+        difficulty: diffEl.value
+      }], true);
+      tracker.track('game_ended', { round, score, reason: message });
+      
+      // Send session data to ML for analysis
+      await mlClient.analyzeSessionComplete({
+        gameKey: 'memoryMatrix',
+        duration: tracker.getTotalTime?.() || 0,
+        score: score,
+        metrics: [
+          { name: 'score', value: score },
+          { name: 'round', value: round },
+          { name: 'difficulty', value: diffEl.value }
+        ]
+      });
+      
+      // Wait a moment then close game window
+      setTimeout(() => {
+        closeGameWindow();
+      }, 2000);
+    }
+
+    function showHighScoreBanner(finalScore) {
+      const banner = document.createElement('div');
+      banner.className = 'high-score-banner';
+      banner.innerHTML = `
+        <h2 style="margin:0; font-size:32px; color:#fff;">🏆 NEW HIGH SCORE!</h2>
+        <p style="margin:10px 0 0; font-size:48px; font-weight:800; color:#fbbf24;">${finalScore} Points</p>
+      `;
+      document.body.appendChild(banner);
+      sound.win();
+      setTimeout(() => banner.remove(), 3000);
+    }
+
+    document.getElementById('start').addEventListener('click', startGame);
+    
+    document.getElementById('quit-game').addEventListener('click', async () => {
+      if (confirm('Are you sure you want to quit? Your progress will be saved.')) {
+        await endGame('Player quit');
+        closeGameWindow();
+      }
+    });
+    
+    modeEl.addEventListener('change', () => { syncModeUI(); adjustByDifficulty(); });
+    timeLimitEl.addEventListener('change', syncModeUI);
+    syncModeUI();
+    
+    window.addEventListener('beforeunload', () => {
+      if (sessionId) {
+        recordMetrics(sessionId, [{ 
+          name: 'score', 
+          value: score, 
+          skill: 'working_memory', 
+          difficulty: diffEl.value 
+        }], true);
+      }
+    });
+  </script>
+</body>
+</html>

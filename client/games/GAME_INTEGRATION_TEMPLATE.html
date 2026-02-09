@@ -1,0 +1,157 @@
+/**
+ * ML Game Integration Template HTML
+ * Use this template for all game HTML files to integrate with ML system
+ * Copy and modify for each game
+ */
+
+<!-- TEMPLATE FOR: [GAME_NAME] Game with ML Integration -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>[GAME_NAME] - Focus Frontier</title>
+  
+  <!-- Base Styles -->
+  <link rel="stylesheet" href="../../assets/style.css">
+  
+  <!-- ML Game Styles -->
+  <link rel="stylesheet" href="../../assets/game-styles.css">
+  
+  <!-- ML Widget Styles -->
+  <link rel="stylesheet" href="../../assets/ml-styles.css">
+  
+  <style>
+    /* Game-specific overrides (optional) */
+    #game-container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+  </style>
+</head>
+<body class="game-view">
+  <header class="navbar">
+    <div class="navbar-content">
+      <h1>Focus Frontier</h1>
+      <nav>
+        <a href="../../index.html">Home</a>
+        <a href="../index.html">Games</a>
+        <a href="../analytics.html">Analytics</a>
+        <a href="#" id="logout">Logout</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <div id="game-container"></div>
+  </main>
+
+  <!-- Game Engine Base Class (Required) -->
+  <script src="../../assets/game-engine-ml.js"></script>
+  
+  <!-- ML Client (Required for API communication) -->
+  <script src="../../assets/ml-client.js"></script>
+  
+  <!-- Game-Specific Implementation -->
+  <script src="./[GAME_NAME]-ml.js"></script>
+  <!-- Example files:
+    - memory-matrix-ml.js
+    - focus-sphere-ml.js
+    - pattern-path-ml.js
+    - reflex-runner-ml.js
+    - color-cascade-ml.js
+    - shape-sorter-ml.js
+  -->
+
+  <script>
+    // Auto-initialize game on page load
+    document.addEventListener('DOMContentLoaded', () => {
+      // Game initialization happens in the game-specific file
+      console.log('Game page loaded and ready');
+    });
+
+    // Handle logout
+    document.getElementById('logout')?.addEventListener('click', (e) => {
+      e.preventDefault();
+      localStorage.removeItem('token');
+      window.location.href = '../../index.html';
+    });
+  </script>
+</body>
+</html>
+
+<!--
+
+INTEGRATION CHECKLIST FOR EACH GAME:
+=====================================
+
+1. UPDATE HTML FILE NAME AND REFERENCES
+   - Rename to include -ml suffix: game-name-ml.html
+   - Update <title> with game name
+   - Replace [GAME_NAME] with actual game name
+
+2. REQUIRED SCRIPT IMPORTS (IN ORDER)
+   ✓ game-engine-ml.js (base class)
+   ✓ ml-client.js (API communication)
+   ✓ [game-name]-ml.js (game implementation)
+
+3. REQUIRED CSS IMPORTS
+   ✓ style.css (base styling)
+   ✓ game-styles.css (game UI styles)
+   ✓ ml-styles.css (ML widget styles)
+
+4. VERIFY GAME CLASS EXISTS
+   - Each game file must export a class that extends GameEngine
+   - Class name should match: [GameName]Game
+   - Must implement required methods
+
+5. TEST INITIALIZATION
+   - Game should auto-initialize on page load
+   - ML recommendations should load
+   - Difficulty adjustment should work
+
+6. VERIFY API INTEGRATION
+   - Check browser console for API calls
+   - Verify session creation on game start
+   - Verify metrics saved on game end
+
+7. LINK IN GAMES MENU
+   - Update games/index.html to link to new ML game
+   - Update game descriptions if needed
+
+GAME-SPECIFIC SETUP NOTES:
+===========================
+
+Memory Matrix:
+- Card grid size: 3x3 to 6x6
+- Container must have proper grid styling
+- Load from: memory-matrix-ml.js
+
+Focus Sphere:
+- Requires canvas: <canvas id="game-canvas" class="focus-canvas"></canvas>
+- Canvas will be sized automatically
+- Load from: focus-sphere-ml.js
+
+Pattern Path:
+- Grid-based pattern game
+- Requires timer display support
+- Load from: pattern-path-ml.js
+
+Reflex Runner:
+- Canvas-based obstacle game
+- Mouse/touch controls
+- Load from: reflex-runner-ml.js
+
+Color Cascade:
+- Canvas-based falling objects
+- Bucket movement controlled by mouse
+- Load from: color-cascade-ml.js
+
+Shape Sorter:
+- Drag-drop interface
+- Categories with visual feedback
+- Load from: shape-sorter-ml.js
+
+-->

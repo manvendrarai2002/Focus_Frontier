@@ -1,0 +1,704 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Trail Making Test</title>
+  <link rel="stylesheet" href="../assets/style.css" />
+  <style>
+    /* Countdown overlay */
+    .countdown-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.95);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10000;
+      animation: fadeIn 0.3s ease;
+    }
+    
+    .countdown-number {
+      font-size: 150px;
+      font-weight: 900;
+      color: #fff;
+      text-shadow: 0 0 40px rgba(168, 85, 247, 0.8), 0 0 80px rgba(168, 85, 247, 0.4);
+      animation: countdownPulse 0.8s ease;
+    }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    
+    @keyframes countdownPulse {
+      0% { transform: scale(0.5); opacity: 0; }
+      50% { transform: scale(1.2); opacity: 1; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    
+    /* Game window */
+    .game-window {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: #0a0f1e;
+      z-index: 9999;
+      display: none;
+      animation: slideIn 0.4s ease;
+      flex-direction: column;
+      padding: 20px;
+      overflow: auto;
+    }
+    
+    .game-window.active {
+      display: flex;
+    }
+    
+    @keyframes slideIn {
+      from { transform: translateY(100%); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+    
+    .game-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      border-bottom: 1px solid rgba(168, 85, 247, 0.3);
+      padding-bottom: 15px;
+    }
+    
+    .game-header h2 {
+      margin: 0;
+      color: #fff;
+      font-size: 24px;
+    }
+    
+    .header-stats {
+      display: flex;
+      gap: 30px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    
+    .header-stat {
+      color: #cbd5e1;
+      font-weight: 600;
+    }
+    
+    .header-stat span {
+      color: #a855f7;
+      font-size: 18px;
+      font-weight: 700;
+    }
+    
+    .game-container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .canvas-wrapper {
+      position: relative;
+      margin: 20px 0;
+    }
+    
+    canvas {
+      border: 2px solid rgba(168, 85, 247, 0.5);
+      border-radius: 12px;
+      background: linear-gradient(135deg, rgba(168, 85, 247, 0.05), rgba(125, 211, 252, 0.05));
+      cursor: crosshair;
+      display: block;
+    }
+    
+    .canvas-wrapper:hover canvas {
+      border-color: rgba(168, 85, 247, 0.8);
+      box-shadow: 0 0 30px rgba(168, 85, 247, 0.3);
+    }
+    
+    .info-text {
+      color: #cbd5e1;
+      font-size: 14px;
+      text-align: center;
+      margin-top: 16px;
+      min-height: 40px;
+    }
+    
+    .stats-row {
+      display: flex;
+      gap: 40px;
+      justify-content: center;
+      margin-top: 20px;
+      flex-wrap: wrap;
+    }
+    
+    .stat-item {
+      text-align: center;
+    }
+    
+    .stat-label {
+      color: #cbd5e1;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 4px;
+    }
+    
+    .stat-value {
+      color: #fff;
+      font-size: 24px;
+      font-weight: 700;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="navbar">
+      <div class="brand"><span class="tag">Clinical</span><a href="../index.html">Focus Frontier</a> / Trail Making</div>
+      <div class="badges" id="user-chip"></div>
+    </div>
+  </header>
+  <main id="main-menu">
+    <div class="section-title"><h2>Trail Making Test</h2><div class="badges"><span class="badge">Processing Speed</span><span class="badge">Flexibility</span><span class="badge" id="high-score">Best: -</span></div></div>
+    <div class="split">
+      <div class="panel">
+        <div class="stat-line"><span>Version</span><strong id="version-display">Part A</strong></div>
+        <div class="stat-line"><span>Best Time</span><strong id="best-time">-</strong></div>
+        <div id="difficulty-widget-trail"></div>
+        <div class="stat-line"><span>Test Type</span>
+          <select id="version" aria-label="Version" style="padding:6px 10px;border-radius:8px;background:#0f182b;color:var(--text);border:1px solid rgba(255,255,255,0.08)">
+            <option value="a">Part A (Numbers)</option>
+            <option value="b" selected>Part B (Numbers + Letters)</option>
+          </select>
+        </div>
+        <div class="stat-line"><span>Difficulty</span>
+          <select id="difficulty" aria-label="Difficulty" style="padding:6px 10px;border-radius:8px;background:#0f182b;color:var(--text);border:1px solid rgba(255,255,255,0.08)">
+            <option value="beginner">Beginner (12 nodes)</option>
+            <option value="intermediate" selected>Standard (20 nodes)</option>
+            <option value="advanced">Advanced (25 nodes)</option>
+          </select>
+        </div>
+        <div style="display:flex; gap:10px; margin-top:14px;">
+          <button class="btn" id="start">Play</button>
+          <button class="btn secondary" onclick="window.location='/client/index.html'">Back to Hub</button>
+        </div>
+      </div>
+      <div class="panel">
+        <h3 style="margin-top:0">How It Works</h3>
+        <p style="font-size: 13px; color: var(--muted); line-height: 1.6;"><strong>Part A:</strong> Connect numbered circles (1→2→3...) in order.</p>
+        <p style="font-size: 13px; color: var(--muted); line-height: 1.6;"><strong>Part B:</strong> Alternate numbers and letters (1→A→2→B...) in order.</p>
+        <div style="background: rgba(168,85,247,0.1); padding: 12px; border-radius: 8px; margin-top: 12px; border-left: 3px solid #a855f7;">
+          <strong style="color: #a855f7;">⏱️ Tip:</strong> <span style="color: var(--muted); font-size: 13px;">Speed and accuracy matter. Errors extend your time. Used to assess processing speed and cognitive flexibility.</span>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Game Window -->
+  <div class="game-window" id="game-window">
+    <div class="game-header">
+      <h2>Trail Making Test</h2>
+      <div class="header-stats">
+        <div class="header-stat">Version: <span id="game-version">Part A</span></div>
+        <div class="header-stat">Time: <span id="game-timer">0.0s</span></div>
+        <div class="header-stat">Errors: <span id="game-errors">0</span></div>
+        <div class="header-stat">Score: <span id="game-score">0</span></div>
+        <div class="header-stat">Hit Timer: <span id="game-hit-timer">-</span></div>
+        <button class="btn secondary" id="quit-game">Quit</button>
+      </div>
+    </div>
+    <div class="game-container">
+      <div class="canvas-wrapper">
+        <canvas id="game-canvas" width="700" height="600"></canvas>
+      </div>
+      <div class="info-text" id="info-text">Click circles in order</div>
+      <div class="stats-row">
+        <div class="stat-item">
+          <div class="stat-label">Time (sec)</div>
+          <div class="stat-value" id="stat-time">0.0</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-label">Score</div>
+          <div class="stat-value" id="stat-score">0</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-label">Errors</div>
+          <div class="stat-value" id="stat-errors">0</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-label">Progress</div>
+          <div class="stat-value" id="stat-progress">0/0</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="countdown-overlay" id="countdown-overlay" style="display: none;">
+    <div class="countdown-number" id="countdown-number">3</div>
+  </div>
+
+  <script src="../assets/app.js"></script>
+  <script src="../assets/game-utils.js"></script>
+  <script src="../assets/ml-client.js"></script>
+  <script>
+    renderUserChip('#user-chip');
+    
+    const versionEl = document.getElementById('version');
+    const difficultyEl = document.getElementById('difficulty');
+    const versionDisplay = document.getElementById('version-display');
+    const bestTimeEl = document.getElementById('best-time');
+    const highScoreEl = document.getElementById('high-score');
+    
+    const gameWindow = document.getElementById('game-window');
+    const gameVersionEl = document.getElementById('game-version');
+    const gameTimerEl = document.getElementById('game-timer');
+    const gameErrorsEl = document.getElementById('game-errors');
+    const gameScoreEl = document.getElementById('game-score');
+    const gameHitTimerEl = document.getElementById('game-hit-timer');
+    const canvas = document.getElementById('game-canvas');
+    const ctx = canvas.getContext('2d');
+    const infoText = document.getElementById('info-text');
+    const statTime = document.getElementById('stat-time');
+    const statScore = document.getElementById('stat-score');
+    const statErrors = document.getElementById('stat-errors');
+    const statProgress = document.getElementById('stat-progress');
+    const countdownOverlay = document.getElementById('countdown-overlay');
+    const countdownNumber = document.getElementById('countdown-number');
+    
+    const sound = new GameUtils.SoundManager();
+    const stats = new GameUtils.GameStats('trailMaking');
+    const tracker = new GameUtils.PerformanceTracker();
+    const mlClient = new MLClient();
+    
+    let sessionId = null;
+    let nodes = [];
+    let currentIndex = 0;
+    let gameActive = false;
+    let gameTimer = null;
+    let startTime = null;
+    let errors = 0;
+    let ended = false;
+    let version = 'b';
+    let numNodes = 20;
+    let mlConfig = null;
+    let score = 0;
+    let consecutiveErrors = 0;
+    let hitTimer = null;
+    let hitTimeLeft = 0;
+    let hitTimeLimit = 3;
+    
+    highScoreEl.textContent = `Best: ${stats.stats.highScore || '-'}`;
+    
+    function showCountdown() {
+      return new Promise((resolve) => {
+        countdownOverlay.style.display = 'flex';
+        let count = 3;
+        
+        function updateCountdown() {
+          countdownNumber.textContent = count;
+          sound.click();
+          
+          if (count > 1) {
+            count--;
+            setTimeout(updateCountdown, 1000);
+          } else {
+            setTimeout(() => {
+              countdownNumber.textContent = 'GO!';
+              countdownNumber.style.color = '#a855f7';
+              sound.success();
+              setTimeout(() => {
+                countdownOverlay.style.display = 'none';
+                countdownNumber.style.color = '#fff';
+                resolve();
+              }, 800);
+            }, 1000);
+          }
+        }
+        
+        updateCountdown();
+      });
+    }
+    
+    function openGameWindow() {
+      gameWindow.classList.add('active');
+      document.querySelector('header').style.display = 'none';
+      document.querySelector('main').style.display = 'none';
+    }
+    
+    function closeGameWindow() {
+      gameWindow.classList.remove('active');
+      document.querySelector('header').style.display = 'block';
+      document.querySelector('main').style.display = 'block';
+    }
+    
+    function generateNodes() {
+      nodes = [];
+      const circleRadius = mlConfig?.circleRadius || 20;
+      const padding = 60;
+      const cols = 5;
+      const layoutMode = mlConfig?.layoutMode || 'scatter';
+      const minDistance = mlConfig?.minDistance || 70;
+      const jitter = mlConfig?.jitter || 28;
+      
+      const cellWidth = (canvas.width - 2 * padding) / cols;
+      const cellHeight = (canvas.height - 2 * padding) / (Math.ceil(numNodes / cols));
+
+      function isFarEnough(x, y, existing) {
+        return existing.every((n) => Math.hypot(n.x - x, n.y - y) >= minDistance);
+      }
+
+      function randomPoint() {
+        return {
+          x: padding + Math.random() * (canvas.width - 2 * padding),
+          y: padding + Math.random() * (canvas.height - 2 * padding)
+        };
+      }
+
+      function placeNode(existing) {
+        let attempts = 0;
+        while (attempts < 600) {
+          const { x, y } = randomPoint();
+          if (isFarEnough(x, y, existing)) {
+            return {
+              x: Math.max(circleRadius, Math.min(x, canvas.width - circleRadius)),
+              y: Math.max(circleRadius, Math.min(y, canvas.height - circleRadius))
+            };
+          }
+          attempts++;
+        }
+        return null;
+      }
+
+      function gridPoint(i) {
+        const col = i % cols;
+        const row = Math.floor(i / cols);
+        const x = padding + col * cellWidth + (Math.random() * jitter - jitter / 2);
+        const y = padding + row * cellHeight + (Math.random() * jitter - jitter / 2);
+        return {
+          x: Math.max(circleRadius, Math.min(x, canvas.width - circleRadius)),
+          y: Math.max(circleRadius, Math.min(y, canvas.height - circleRadius))
+        };
+      }
+      
+      if (version === 'a') {
+        // Part A: Numbers only (1, 2, 3, ...)
+        for (let i = 1; i <= numNodes; i++) {
+          const point = layoutMode === 'scatter' ? placeNode(nodes) : null;
+          const fallback = gridPoint(i - 1);
+          const x = (point || fallback).x;
+          const y = (point || fallback).y;
+          nodes.push({
+            label: String(i),
+            x: Math.max(circleRadius, Math.min(x, canvas.width - circleRadius)),
+            y: Math.max(circleRadius, Math.min(y, canvas.height - circleRadius)),
+            radius: circleRadius
+          });
+        }
+      } else {
+        // Part B: Alternating numbers and letters (1, A, 2, B, 3, C, ...)
+        let numCount = 1;
+        let letterCount = 0;
+        for (let i = 0; i < numNodes; i++) {
+          const point = layoutMode === 'scatter' ? placeNode(nodes) : null;
+          const fallback = gridPoint(i);
+          const x = (point || fallback).x;
+          const y = (point || fallback).y;
+          
+          let label;
+          if (i % 2 === 0) {
+            label = String(numCount);
+            numCount++;
+          } else {
+            label = String.fromCharCode(65 + letterCount);
+            letterCount++;
+          }
+          
+          nodes.push({
+            label,
+            x: Math.max(circleRadius, Math.min(x, canvas.width - circleRadius)),
+            y: Math.max(circleRadius, Math.min(y, canvas.height - circleRadius)),
+            radius: circleRadius
+          });
+        }
+      }
+    }
+    
+    function drawGame() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      
+      // Draw lines connecting already completed nodes
+      if (currentIndex > 1) {
+        ctx.strokeStyle = 'rgba(168, 85, 247, 0.4)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(nodes[0].x, nodes[0].y);
+        for (let i = 1; i < currentIndex; i++) {
+          ctx.lineTo(nodes[i].x, nodes[i].y);
+        }
+        ctx.stroke();
+      }
+      
+      // Draw all circles
+      nodes.forEach((node, idx) => {
+        const isCompleted = idx < currentIndex;
+        const isCurrent = idx === currentIndex;
+        const isNext = idx === currentIndex;
+        
+        // Circle background
+        if (isCompleted) {
+          ctx.fillStyle = 'rgba(168, 85, 247, 0.3)';
+        } else if (isCurrent) {
+          ctx.fillStyle = 'rgba(52, 211, 153, 0.5)';
+        } else {
+          ctx.fillStyle = 'rgba(56, 189, 248, 0.2)';
+        }
+        
+        ctx.beginPath();
+        ctx.arc(node.x, node.y, node.radius, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Circle border
+        ctx.strokeStyle = isCurrent ? '#34d399' : isCompleted ? '#a855f7' : '#38bdf8';
+        ctx.lineWidth = isCurrent ? 3 : 2;
+        ctx.stroke();
+        
+        // Text label
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 16px Inter';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(node.label, node.x, node.y);
+      });
+    }
+    
+    function updateTimer() {
+      if (!gameActive || !startTime) return;
+      const elapsed = (Date.now() - startTime) / 1000;
+      gameTimerEl.textContent = elapsed.toFixed(1) + 's';
+      statTime.textContent = elapsed.toFixed(1);
+    }
+
+    function setHitTimer() {
+      clearInterval(hitTimer);
+      hitTimeLeft = hitTimeLimit;
+      gameHitTimerEl.textContent = hitTimeLeft.toFixed(1) + 's';
+      hitTimer = setInterval(() => {
+        if (!gameActive || ended) return;
+        hitTimeLeft = Math.max(0, hitTimeLeft - 0.1);
+        gameHitTimerEl.textContent = hitTimeLeft.toFixed(1) + 's';
+        if (hitTimeLeft <= 0) {
+          clearInterval(hitTimer);
+          handleHitTimeout();
+        }
+      }, 100);
+    }
+
+    function applyErrorPenalty() {
+      score = Math.max(0, score - 2);
+      consecutiveErrors += 1;
+      if (consecutiveErrors % 2 === 0) {
+        score = Math.max(0, score - 2);
+      }
+      gameScoreEl.textContent = score;
+      statScore.textContent = score;
+    }
+
+    function applyCorrectReward() {
+      score += 5;
+      consecutiveErrors = 0;
+      gameScoreEl.textContent = score;
+      statScore.textContent = score;
+    }
+
+    function handleHitTimeout() {
+      if (!gameActive || currentIndex >= nodes.length) return;
+      errors++;
+      gameErrorsEl.textContent = errors;
+      statErrors.textContent = errors;
+      applyErrorPenalty();
+      sound.error();
+      tracker.track('error', { errors, reason: 'timeout' });
+      currentIndex++;
+      statProgress.textContent = currentIndex + '/' + nodes.length;
+      if (currentIndex >= nodes.length) {
+        gameActive = false;
+        clearInterval(gameTimer);
+        endGame();
+      } else {
+        drawGame();
+        setHitTimer();
+      }
+    }
+    
+    canvas.addEventListener('click', (e) => {
+      if (!gameActive || currentIndex >= nodes.length) return;
+      
+      const rect = canvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      
+      const currentNode = nodes[currentIndex];
+      const dist = Math.hypot(x - currentNode.x, y - currentNode.y);
+      
+      if (dist <= currentNode.radius + 10) {
+        // Correct circle clicked
+        sound.success();
+        applyCorrectReward();
+        currentIndex++;
+        statProgress.textContent = currentIndex + '/' + nodes.length;
+        
+        if (currentIndex >= nodes.length) {
+          // Game complete
+          gameActive = false;
+          clearInterval(gameTimer);
+          clearInterval(hitTimer);
+          endGame();
+        } else {
+          drawGame();
+          setHitTimer();
+        }
+      } else {
+        // Wrong circle clicked
+        errors++;
+        gameErrorsEl.textContent = errors;
+        statErrors.textContent = errors;
+        applyErrorPenalty();
+        sound.error();
+        tracker.track('error', { errors });
+      }
+    });
+    
+    async function startGame() {
+      // Load ML recommendation
+      const mlRecommendation = await mlClient.getDifficultyRecommendation('trailMaking');
+      if (mlRecommendation?.autoAdjust) {
+        const diffMap = { 'beginner': 'beginner', 'intermediate': 'intermediate', 'advanced': 'advanced' };
+        difficultyEl.value = diffMap[mlRecommendation.suggestedDifficulty] || 'intermediate';
+      }
+      if (mlRecommendation) {
+        mlClient.displayDifficultyWidget('difficulty-widget-trail', mlRecommendation);
+      }
+
+      // Load ML config for randomization/difficulty
+      mlConfig = await mlClient.getGameConfig('trailMaking');
+      if (mlConfig?.suggestedDifficulty && mlRecommendation?.autoAdjust) {
+        difficultyEl.value = mlConfig.suggestedDifficulty;
+      }
+      
+      // Reset
+      gameActive = false;
+      ended = false;
+      version = versionEl.value;
+      numNodes = mlConfig?.nodeCount || { 'beginner': 12, 'intermediate': 20, 'advanced': 25 }[difficultyEl.value] || 20;
+      currentIndex = 0;
+      errors = 0;
+      score = 0;
+      consecutiveErrors = 0;
+      startTime = null;
+
+      hitTimeLimit = difficultyEl.value === 'advanced' ? 2 : difficultyEl.value === 'beginner' ? 4 : 3;
+      
+      versionDisplay.textContent = version === 'a' ? 'Part A' : 'Part B';
+      gameVersionEl.textContent = version === 'a' ? 'Part A' : 'Part B';
+      generateNodes();
+      
+      sessionId = await startSession('trailMaking', version + '-' + numNodes);
+      tracker.track('game_started');
+      
+      // Show countdown
+      await showCountdown();
+      openGameWindow();
+      
+      gameActive = true;
+      startTime = Date.now();
+      gameTimerEl.textContent = '0.0s';
+      gameErrorsEl.textContent = '0';
+      gameScoreEl.textContent = '0';
+      statScore.textContent = '0';
+      statProgress.textContent = '0/' + numNodes;
+      
+      drawGame();
+      setHitTimer();
+      
+      gameTimer = setInterval(updateTimer, 100);
+    }
+    
+    async function endGame() {
+      if (ended) return;
+      ended = true;
+      clearInterval(gameTimer);
+      
+      const elapsedTime = (Date.now() - startTime) / 1000;
+
+      clearInterval(hitTimer);
+      
+      await recordMetrics(sessionId, [{
+        name: 'score',
+        value: score,
+        skill: 'processing_speed',
+        difficulty: difficultyEl.value
+      }, {
+        name: 'time_seconds',
+        value: elapsedTime,
+        skill: 'processing_speed',
+        difficulty: difficultyEl.value
+      }, {
+        name: 'errors',
+        value: errors,
+        skill: 'cognitive_flexibility',
+        difficulty: difficultyEl.value
+      }], true);
+      
+      // Send to ML
+      await mlClient.analyzeSessionComplete({
+        gameKey: 'trailMaking',
+        duration: elapsedTime,
+        score: score,
+        metrics: [
+          { name: 'time_seconds', value: elapsedTime },
+          { name: 'errors', value: errors },
+          { name: 'difficulty', value: difficultyEl.value }
+        ]
+      });
+      
+      const isHighScore = score > (stats.stats.highScore || 0);
+      if (isHighScore) {
+        stats.stats.highScore = score;
+        stats.save();
+        bestTimeEl.textContent = stats.stats.highScore;
+        highScoreEl.textContent = `Best: ${stats.stats.highScore}`;
+        sound.win();
+        toast(`🏆 New Record! Score: ${score}`, 'success');
+      }
+      
+      toast(`Complete! Score: ${score}, Errors: ${errors}`, 'info');
+      sound.click();
+      
+      setTimeout(() => {
+        closeGameWindow();
+      }, 2000);
+    }
+    
+    document.getElementById('start').addEventListener('click', startGame);
+    
+    document.getElementById('quit-game').addEventListener('click', async () => {
+      if (confirm('Quit game? Progress will be saved.')) {
+        gameActive = false;
+        clearInterval(gameTimer);
+        if (!ended && startTime) {
+          await endGame();
+        }
+        closeGameWindow();
+      }
+    });
+  </script>
+</body>
+</html>

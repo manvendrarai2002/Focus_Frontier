@@ -1,0 +1,555 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Dual N-Back</title>
+  <link rel="stylesheet" href="../assets/style.css" />
+  <style>
+    /* Countdown overlay */
+    .countdown-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.95);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10000;
+      animation: fadeIn 0.3s ease;
+    }
+    
+    .countdown-number {
+      font-size: 150px;
+      font-weight: 900;
+      color: #fff;
+      text-shadow: 0 0 40px rgba(56, 189, 248, 0.8), 0 0 80px rgba(56, 189, 248, 0.4);
+      animation: countdownPulse 0.8s ease;
+    }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    
+    @keyframes countdownPulse {
+      0% { transform: scale(0.5); opacity: 0; }
+      50% { transform: scale(1.2); opacity: 1; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    
+    /* Game window */
+    .game-window {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: #0a0f1e;
+      z-index: 9999;
+      display: none;
+      animation: slideIn 0.4s ease;
+      flex-direction: column;
+      padding: 20px;
+    }
+    
+    .game-window.active {
+      display: flex;
+    }
+    
+    @keyframes slideIn {
+      from { transform: translateY(100%); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+    
+    .game-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      border-bottom: 1px solid rgba(56, 189, 248, 0.3);
+      padding-bottom: 15px;
+    }
+    
+    .game-header h2 {
+      margin: 0;
+      color: #fff;
+      font-size: 24px;
+    }
+    
+    .header-stats {
+      display: flex;
+      gap: 30px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    
+    .header-stat {
+      color: #cbd5e1;
+      font-weight: 600;
+    }
+    
+    .header-stat span {
+      color: #38bdf8;
+      font-size: 18px;
+      font-weight: 700;
+    }
+    
+    .game-container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+    }
+    
+    .stimulus-box {
+      width: 200px;
+      height: 200px;
+      border-radius: 16px;
+      background: linear-gradient(135deg, rgba(56, 189, 248, 0.2), rgba(168, 85, 247, 0.2));
+      border: 3px solid rgba(56, 189, 248, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 80px;
+      font-weight: 800;
+      color: #38bdf8;
+      transition: all 0.2s ease;
+    }
+    
+    .stimulus-box.active {
+      border-color: #38bdf8;
+      box-shadow: 0 0 40px rgba(56, 189, 248, 0.6);
+      background: linear-gradient(135deg, rgba(56, 189, 248, 0.4), rgba(168, 85, 247, 0.4));
+    }
+    
+    .info-text {
+      color: #cbd5e1;
+      font-size: 14px;
+      text-align: center;
+      max-width: 400px;
+    }
+    
+    .button-group {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    
+    .response-btn {
+      padding: 12px 24px;
+      border: 2px solid #38bdf8;
+      background: rgba(56, 189, 248, 0.1);
+      color: #38bdf8;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      min-width: 120px;
+    }
+    
+    .response-btn:hover:not(:disabled) {
+      background: rgba(56, 189, 248, 0.2);
+      box-shadow: 0 0 20px rgba(56, 189, 248, 0.3);
+    }
+    
+    .response-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    
+    .difficulty-info {
+      color: #a855f7;
+      font-weight: 600;
+      font-size: 16px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="navbar">
+      <div class="brand"><span class="tag">Clinical</span><a href="../index.html">Focus Frontier</a> / Dual N-Back</div>
+      <div class="badges" id="user-chip"></div>
+    </div>
+  </header>
+  <main id="main-menu">
+    <div class="section-title"><h2>Dual N-Back</h2><div class="badges"><span class="badge">Working Memory</span><span class="badge">Advanced</span><span class="badge" id="high-score">Best Level: 1</span></div></div>
+    <div class="split">
+      <div class="panel">
+        <div class="stat-line"><span>Current Level</span><strong id="level-display">1-Back</strong></div>
+        <div class="stat-line"><span>Accuracy</span><strong id="accuracy">0%</strong></div>
+        <div class="stat-line"><span>Correct</span><strong id="correct">0/0</strong></div>
+        <div class="stat-line"><span>Mode</span>
+          <select id="mode" aria-label="Mode" style="padding:6px 10px;border-radius:8px;background:#0f182b;color:var(--text);border:1px solid rgba(255,255,255,0.08)">
+            <option value="position">Position Only</option>
+            <option value="sound">Sound Only</option>
+            <option value="dual" selected>Dual (Position + Sound)</option>
+          </select>
+        </div>
+        <div class="stat-line"><span>Duration</span>
+          <select id="duration" aria-label="Duration" style="padding:6px 10px;border-radius:8px;background:#0f182b;color:var(--text);border:1px solid rgba(255,255,255,0.08)">
+            <option value="30">30 seconds</option>
+            <option value="60" selected>60 seconds</option>
+            <option value="90">90 seconds</option>
+          </select>
+        </div>
+        <div style="display:flex; gap:10px; margin-top:14px;">
+          <button class="btn" id="start">Play</button>
+          <button class="btn secondary" onclick="window.location='/client/index.html'">Back to Hub</button>
+        </div>
+      </div>
+      <div class="panel">
+        <h3 style="margin-top:0">How It Works</h3>
+        <p style="font-size: 13px; color: var(--muted); line-height: 1.6;">Stimuli appear in sequence. Remember the stimulus from N positions back. If it matches, press "Match". If it doesn't match, press "No Match". The level increases automatically when you reach 80% accuracy.</p>
+        <div style="background: rgba(56,189,248,0.1); padding: 12px; border-radius: 8px; margin-top: 12px; border-left: 3px solid #38bdf8;">
+          <strong style="color: #38bdf8;">💡 Tip:</strong> <span style="color: var(--muted); font-size: 13px;">This is a demanding task—it's OK to be challenged! Progression is success.</span>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Game Window -->
+  <div class="game-window" id="game-window">
+    <div class="game-header">
+      <h2>Dual N-Back</h2>
+      <div class="header-stats">
+        <div class="header-stat">Level: <span id="game-level">1-Back</span></div>
+        <div class="header-stat">Accuracy: <span id="game-accuracy">0%</span></div>
+        <div class="header-stat">Time: <span id="game-timer">60s</span></div>
+        <button class="btn secondary" id="quit-game">Quit</button>
+      </div>
+    </div>
+    <div class="game-container">
+      <div class="difficulty-info" id="difficulty-info">1-Back</div>
+      <div class="stimulus-box" id="stimulus-box">-</div>
+      <div class="info-text" id="info-text">Waiting for stimuli...</div>
+      <div class="button-group">
+        <button class="response-btn" id="match-btn">Match (M)</button>
+        <button class="response-btn" id="no-match-btn">No Match (N)</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="countdown-overlay" id="countdown-overlay" style="display: none;">
+    <div class="countdown-number" id="countdown-number">3</div>
+  </div>
+
+  <script src="../assets/app.js"></script>
+  <script src="../assets/game-utils.js"></script>
+  <script src="../assets/ml-client.js"></script>
+  <script>
+    renderUserChip('#user-chip');
+    
+    const modeEl = document.getElementById('mode');
+    const durationEl = document.getElementById('duration');
+    const levelDisplay = document.getElementById('level-display');
+    const accuracyEl = document.getElementById('accuracy');
+    const correctEl = document.getElementById('correct');
+    const highScoreEl = document.getElementById('high-score');
+    
+    const gameWindow = document.getElementById('game-window');
+    const gameLevelEl = document.getElementById('game-level');
+    const gameAccuracyEl = document.getElementById('game-accuracy');
+    const gameTimerEl = document.getElementById('game-timer');
+    const stimulusBox = document.getElementById('stimulus-box');
+    const infoText = document.getElementById('info-text');
+    const matchBtn = document.getElementById('match-btn');
+    const noMatchBtn = document.getElementById('no-match-btn');
+    const difficultyInfo = document.getElementById('difficulty-info');
+    const countdownOverlay = document.getElementById('countdown-overlay');
+    const countdownNumber = document.getElementById('countdown-number');
+    
+    const sound = new GameUtils.SoundManager();
+    const stats = new GameUtils.GameStats('dualNBack');
+    const tracker = new GameUtils.PerformanceTracker();
+    const mlClient = new MLClient();
+    
+    let sessionId = null;
+    let nBack = 1;
+    let maxNBack = 1;
+    let sequence = [];
+    let responseSequence = [];
+    let currentIndex = 0;
+    let correct = 0;
+    let total = 0;
+    let gameActive = false;
+    let gameTimer = null;
+    let ended = false;
+    let stimuliPerSecond = 1;
+    let roundDuration = 60;
+    
+    // Positions: 0-8 in 3x3 grid
+    const positions = [0, 1, 2, 3, 4, 5, 6, 7, 8];
+    const sounds = [400, 500, 600, 700, 800, 900, 1000, 1100, 1200];
+    
+    highScoreEl.textContent = `Best Level: ${stats.stats.highScore || 1}-Back`;
+    
+    function showCountdown() {
+      return new Promise((resolve) => {
+        countdownOverlay.style.display = 'flex';
+        let count = 3;
+        
+        function updateCountdown() {
+          countdownNumber.textContent = count;
+          sound.click();
+          
+          if (count > 1) {
+            count--;
+            setTimeout(updateCountdown, 1000);
+          } else {
+            setTimeout(() => {
+              countdownNumber.textContent = 'GO!';
+              countdownNumber.style.color = '#38bdf8';
+              sound.success();
+              setTimeout(() => {
+                countdownOverlay.style.display = 'none';
+                countdownNumber.style.color = '#fff';
+                resolve();
+              }, 800);
+            }, 1000);
+          }
+        }
+        
+        updateCountdown();
+      });
+    }
+    
+    function openGameWindow() {
+      gameWindow.classList.add('active');
+      document.querySelector('header').style.display = 'none';
+      document.querySelector('main').style.display = 'none';
+    }
+    
+    function closeGameWindow() {
+      gameWindow.classList.remove('active');
+      document.querySelector('header').style.display = 'block';
+      document.querySelector('main').style.display = 'block';
+    }
+    
+    function generateSequence(length) {
+      return Array.from({ length }, () => ({
+        position: positions[Math.floor(Math.random() * positions.length)],
+        sound: sounds[Math.floor(Math.random() * sounds.length)]
+      }));
+    }
+    
+    function getPositionLabel(pos) {
+      const labels = ['↖️', '⬆️', '↗️', '⬅️', '⬜', '➡️', '↙️', '⬇️', '↘️'];
+      return labels[pos] || pos;
+    }
+    
+    async function playSequence() {
+      for (let i = 0; i < sequence.length; i++) {
+        currentIndex = i;
+        const stim = sequence[i];
+        const posLabel = getPositionLabel(stim.position);
+        
+        // Play position
+        stimulusBox.textContent = posLabel;
+        stimulusBox.classList.add('active');
+        
+        // Play sound if not position-only mode
+        if (modeEl.value !== 'position') {
+          sound.play(stim.sound, 100);
+        }
+        
+        // Update info
+        const nBackPos = i - nBack;
+        if (nBackPos >= 0) {
+          infoText.textContent = `Is this the same as ${nBack} stimuli back?`;
+        } else {
+          infoText.textContent = 'Remember this...';
+        }
+        
+        await new Promise(r => setTimeout(r, 500));
+        stimulusBox.classList.remove('active');
+        stimulusBox.textContent = '-';
+        await new Promise(r => setTimeout(r, 1500));
+      }
+    }
+    
+    function updateDisplay() {
+      const acc = total > 0 ? Math.round((correct / total) * 100) : 0;
+      accuracyEl.textContent = acc + '%';
+      correctEl.textContent = correct + '/' + total;
+      gameAccuracyEl.textContent = acc + '%';
+    }
+    
+    function checkMatch(userSays) {
+      if (currentIndex < nBack) {
+        return null; // Too early, no valid match
+      }
+      
+      const modePos = modeEl.value !== 'sound';
+      const modeSound = modeEl.value !== 'position';
+      
+      const current = sequence[currentIndex];
+      const nBackStim = sequence[currentIndex - nBack];
+      
+      let match = true;
+      if (modePos && current.position !== nBackStim.position) match = false;
+      if (modeSound && current.sound !== nBackStim.sound) match = false;
+      
+      const correct_response = match ? 'match' : 'no-match';
+      const isCorrect = userSays === correct_response;
+      
+      return isCorrect;
+    }
+    
+    matchBtn.addEventListener('click', () => {
+      if (!gameActive || currentIndex < nBack) return;
+      const isCorrect = checkMatch('match');
+      if (isCorrect !== null) {
+        if (isCorrect) {
+          correct++;
+          sound.success();
+        } else {
+          sound.error();
+        }
+        total++;
+        updateDisplay();
+      }
+    });
+    
+    noMatchBtn.addEventListener('click', () => {
+      if (!gameActive || currentIndex < nBack) return;
+      const isCorrect = checkMatch('no-match');
+      if (isCorrect !== null) {
+        if (isCorrect) {
+          correct++;
+          sound.success();
+        } else {
+          sound.error();
+        }
+        total++;
+        updateDisplay();
+      }
+    });
+    
+    async function startGame() {
+      // Load ML recommendation
+      const mlRecommendation = await mlClient.getDifficultyRecommendation('dualNBack');
+      if (mlRecommendation?.autoAdjust) {
+        // Map difficulty to N-back level
+        const levelMap = { 'beginner': 1, 'intermediate': 2, 'advanced': 3 };
+        nBack = levelMap[mlRecommendation.suggestedDifficulty] || 1;
+      }
+      if (mlRecommendation) {
+        mlClient.displayDifficultyWidget('difficulty-widget-nback', mlRecommendation);
+      }
+      
+      // Reset
+      gameActive = false;
+      ended = false;
+      nBack = nBack || 1;
+      roundDuration = parseInt(durationEl.value);
+      sequence = generateSequence(Math.ceil(roundDuration * stimuliPerSecond) + nBack);
+      correct = 0;
+      total = 0;
+      currentIndex = -1;
+      
+      levelDisplay.textContent = nBack + '-Back';
+      gameLevelEl.textContent = nBack + '-Back';
+      difficultyInfo.textContent = nBack + '-Back';
+      updateDisplay();
+      sessionId = await startSession('dualNBack', nBack + '-Back');
+      tracker.track('game_started');
+      
+      // Show countdown
+      await showCountdown();
+      openGameWindow();
+      
+      gameActive = true;
+      
+      // Start timer
+      let timeLeft = roundDuration;
+      gameTimerEl.textContent = timeLeft + 's';
+      gameTimer = setInterval(() => {
+        timeLeft--;
+        gameTimerEl.textContent = timeLeft + 's';
+        if (timeLeft <= 0) {
+          clearInterval(gameTimer);
+          endGame();
+        }
+      }, 1000);
+      
+      // Play sequence
+      await playSequence();
+    }
+    
+    async function endGame() {
+      if (ended) return;
+      ended = true;
+      gameActive = false;
+      clearInterval(gameTimer);
+      
+      const accuracy = total > 0 ? Math.round((correct / total) * 100) : 0;
+      
+      // Adaptive difficulty
+      if (accuracy >= 80 && nBack < 8) {
+        nBack++;
+        maxNBack = Math.max(maxNBack, nBack);
+      } else if (accuracy < 60 && nBack > 1) {
+        nBack--;
+      }
+      
+      await recordMetrics(sessionId, [{
+        name: 'score',
+        value: accuracy,
+        skill: 'working_memory',
+        difficulty: nBack + '-Back'
+      }], true);
+      
+      // Send to ML
+      await mlClient.analyzeSessionComplete({
+        gameKey: 'dualNBack',
+        duration: roundDuration,
+        score: accuracy,
+        metrics: [
+          { name: 'accuracy', value: accuracy },
+          { name: 'correct', value: correct },
+          { name: 'total', value: total },
+          { name: 'level', value: nBack }
+        ]
+      });
+      
+      const isHighScore = maxNBack > (stats.stats.highScore || 1);
+      if (isHighScore) {
+        stats.stats.highScore = maxNBack;
+        stats.save();
+        highScoreEl.textContent = `Best Level: ${maxNBack}-Back`;
+        sound.win();
+        toast(`🏆 New Record! Reached ${maxNBack}-Back`, 'success');
+      }
+      
+      toast(`Session Complete! Accuracy: ${accuracy}%`, 'info');
+      
+      setTimeout(() => {
+        closeGameWindow();
+      }, 2000);
+    }
+    
+    document.getElementById('start').addEventListener('click', startGame);
+    
+    document.getElementById('quit-game').addEventListener('click', async () => {
+      if (confirm('Quit game? Progress will be saved.')) {
+        await endGame();
+        closeGameWindow();
+      }
+    });
+    
+    // Keyboard support
+    document.addEventListener('keydown', (e) => {
+      if (e.key.toLowerCase() === 'm') matchBtn.click();
+      if (e.key.toLowerCase() === 'n') noMatchBtn.click();
+    });
+  </script>
+</body>
+</html>

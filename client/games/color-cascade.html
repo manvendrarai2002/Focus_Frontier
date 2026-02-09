@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Color Cascade</title>
+  <link rel="stylesheet" href="../assets/style.css" />
+</head>
+
+<body>
+  <header>
+    <div class="navbar">
+      <div class="brand"><span class="tag">Game</span><a href="../index.html">Focus Frontier</a> / Color Cascade</div>
+      <div class="badges" id="user-chip"></div>
+    </div>
+  </header>
+  <main>
+    <div class="section-title">
+      <h2>Color Cascade</h2>
+      <div class="badges"><span class="badge">Attention</span><span class="badge">Inhibition</span></div>
+    </div>
+    <div class="split">
+      <div class="panel">
+        <div class="stat-line"><span>Score</span><strong id="score">0</strong></div>
+        <div class="stat-line"><span>Time</span><strong id="timer">60</strong></div>
+        <div id="difficulty-widget-color"></div>
+        <div class="stat-line"><span>Mode</span>
+          <select id="mode" aria-label="Mode"
+            style="padding:6px 10px;border-radius:8px;background:#0f182b;color:var(--text);border:1px solid rgba(255,255,255,0.08)">
+            <option value="timed">Timed</option>
+            <option value="elimination">Elimination</option>
+          </select>
+        </div>
+        <div class="stat-line" id="time-row"><span>Time limit</span>
+          <select id="time" aria-label="Time limit"
+            style="padding:6px 10px;border-radius:8px;background:#0f182b;color:var(--text);border:1px solid rgba(255,255,255,0.08)">
+            <option value="30">30s</option>
+            <option value="60" selected>60s</option>
+            <option value="90">90s</option>
+            <option value="120">120s</option>
+            <option value="180">180s</option>
+          </select>
+        </div>
+        <div class="stat-line"><span>Difficulty</span>
+          <select id="difficulty" aria-label="Difficulty"
+            style="padding:6px 10px;border-radius:8px;background:#0f182b;color:var(--text);border:1px solid rgba(255,255,255,0.08)">
+            <option value="beginner">Beginner</option>
+            <option value="intermediate">Intermediate</option>
+            <option value="advanced">Advanced</option>
+          </select>
+        </div>
+        <div style="display:flex; gap:10px; margin-top:14px;">
+          <button class="btn" id="start">Start</button>
+          <button class="btn secondary" id="pause">Pause</button>
+          <button class="btn secondary" onclick="window.location='/client/index.html'">Back</button>
+        </div>
+      </div>
+      <div class="panel" style="text-align:center;">
+        <div id="word" style="font-size:52px;font-weight:800;margin:20px 0;">Ready?</div>
+        <div id="choices" style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;"></div>
+      </div>
+    </div>
+  </main>
+
+  <script src="../assets/app.js"></script>
+  <script src="../assets/game-utils.js"></script>
+  <script src="../assets/ml-client.js"></script>
+  <script>
+    renderUserChip('#user-chip');
+    const colors = { red: '#ef4444', blue: '#3b82f6', green: '#22c55e', yellow: '#eab308', purple: '#a855f7' };
+    const scoreEl = document.getElementById('score');
+    const timerEl = document.getElementById('timer');
+    const wordEl = document.getElementById('word');
+    const choicesEl = document.getElementById('choices');
+    const diffEl = document.getElementById('difficulty');
+    const modeEl = document.getElementById('mode');
+    const timeEl = document.getElementById('time');
+    const timeRow = document.getElementById('time-row');
+
+    // ML Client
+    const mlClient = new MLClient();
+
+    let sessionId = null;
+    let score = 0;
+    let timer = 60;
+    let loop = null;
+    let paused = false;
+    let gameActive = false;
+    let ended = false;
+    let matches = 0;
+    let misses = 0;
+    let combo = 0;
+
+    function syncModeUI() {
+      const timed = modeEl.value === 'timed';
+      timeRow.style.display = timed ? 'flex' : 'none';
+      timerEl.textContent = timed ? timeEl.value : '∞';
+    }
+
+    function buildButtons() {
+      choicesEl.innerHTML = '';
+      Object.entries(colors).forEach(([name, val]) => {
+        const btn = document.createElement('button');
+        btn.className = 'btn secondary';
+        btn.style.background = val;
+        btn.style.color = '#0b1220';
+        btn.textContent = name.toUpperCase();
+        btn.onclick = () => handleChoice(name);
+        choicesEl.appendChild(btn);
+      });
+    }
+
+    function setChoicesEnabled(enabled) {
+      Array.from(choicesEl.querySelectorAll('button')).forEach((btn) => {
+        btn.disabled = !enabled;
+        btn.style.opacity = enabled ? '1' : '0.6';
+        btn.style.cursor = enabled ? 'pointer' : 'not-allowed';
+      });
+    }
+
+    async function startGame() {
+      // Load ML difficulty recommendation
+      const mlRecommendation = await mlClient.getDifficultyRecommendation('colorCascade');
+      if (mlRecommendation?.autoAdjust) {
+        diffEl.value = mlRecommendation.suggestedDifficulty;
+      }
+      if (mlRecommendation) {
+        mlClient.displayDifficultyWidget('difficulty-widget-color', mlRecommendation);
+      }
+
+      paused = false;
+      ended = false;
+      gameActive = true;
+      score = 0;
+      matches = 0;
+      misses = 0;
+      combo = 0;
+      timer = parseInt(timeEl.value, 10);
+      scoreEl.textContent = '0';
+      timerEl.textContent = modeEl.value === 'timed' ? timer : '∞';
+      buildButtons();
+
+      sessionId = await startSession('colorCascade', diffEl.value);
+
+      clearInterval(loop);
+      if (modeEl.value === 'timed') {
+        loop = setInterval(() => {
+          if (!paused) {
+            timer -= 1;
+            timerEl.textContent = timer;
+            if (timer <= 0) endGame();
+          }
+        }, 1000);
+      }
+      setChoicesEnabled(true);
+      nextPrompt();
+    }
+
+    function nextPrompt() {
+      const names = Object.keys(colors);
+      const word = names[Math.floor(Math.random() * names.length)];
+      let ink = word;
+      while (ink === word) ink = names[Math.floor(Math.random() * names.length)];
+      wordEl.textContent = word.toUpperCase();
+      wordEl.style.color = colors[ink];
+      wordEl.dataset.correct = ink;
+    }
+
+    async function handleChoice(choice) {
+      if (!gameActive || ended || paused || (modeEl.value === 'timed' && timer <= 0)) return;
+      const correct = wordEl.dataset.correct === choice;
+      if (correct) {
+        matches++;
+        combo++;
+        score += 2 + Math.floor(combo / 5); // Bonus for streaks
+        await recordMetrics(sessionId, [{ name: 'hit', value: 1, skill: 'attention', difficulty: diffEl.value }], false);
+      } else {
+        misses++;
+        combo = 0;
+        await recordMetrics(sessionId, [{ name: 'error', value: 1, skill: 'inhibition', difficulty: diffEl.value }], false);
+        if (modeEl.value === 'elimination') {
+          return endGame('Mistake - eliminated');
+        }
+        score = Math.max(0, score - 1);
+        timer = Math.max(0, timer - 2);
+      }
+      scoreEl.textContent = score;
+      if (modeEl.value === 'timed') timerEl.textContent = timer;
+
+      if (modeEl.value === 'timed' && timer <= 0) return endGame();
+      nextPrompt();
+    }
+
+    async function endGame(message = 'Time up!') {
+      if (ended) return;
+      ended = true;
+      gameActive = false;
+      clearInterval(loop);
+      setChoicesEnabled(false);
+      wordEl.textContent = message;
+      wordEl.style.color = 'var(--muted)';
+
+      const accuracy = (matches + misses) > 0 ? matches / (matches + misses) : 0;
+
+      await recordMetrics(sessionId, [{ name: 'score', value: score, skill: 'attention', difficulty: diffEl.value }], true);
+
+      // Send to ML
+      await mlClient.analyzeSessionComplete({
+        gameKey: 'colorCascade',
+        duration: parseInt(timeEl.value, 10) - timer, // Approximate duration if timed
+        score: score,
+        metrics: [
+          { name: 'score', value: score },
+          { name: 'matches', value: matches },
+          { name: 'misses', value: misses },
+          { name: 'accuracy', value: accuracy },
+          { name: 'difficulty', value: diffEl.value }
+        ]
+      });
+
+      toast(`${message} Score ${score}`);
+    }
+
+    document.getElementById('start').addEventListener('click', startGame);
+    document.getElementById('pause').addEventListener('click', () => {
+      paused = !paused;
+      document.getElementById('pause').textContent = paused ? 'Resume' : 'Pause';
+    });
+    modeEl.addEventListener('change', syncModeUI);
+    timeEl.addEventListener('change', syncModeUI);
+    syncModeUI();
+    window.addEventListener('beforeunload', () => {
+      if (sessionId) recordMetrics(sessionId, [{ name: 'score', value: score, skill: 'attention', difficulty: diffEl.value }], true);
+    });
+  </script>
+</body>
+
+</html>

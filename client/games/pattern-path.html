@@ -1,0 +1,549 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Pattern Path</title>
+  <link rel="stylesheet" href="../assets/style.css" />
+  <link rel="stylesheet" href="../assets/immersive-game-styles.css" />
+  <style>
+    /* Countdown overlay */
+    .countdown-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.95);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10000;
+      animation: fadeIn 0.3s ease;
+    }
+    
+    .countdown-number {
+      font-size: 150px;
+      font-weight: 900;
+      color: #fff;
+      text-shadow: 0 0 40px rgba(168, 85, 247, 0.8), 0 0 80px rgba(168, 85, 247, 0.4);
+      animation: countdownPulse 0.8s ease;
+    }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    
+    @keyframes countdownPulse {
+      0% { transform: scale(0.5); opacity: 0; }
+      50% { transform: scale(1.2); opacity: 1; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    
+    /* Game window */
+    .game-window {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: #0a0f1e;
+      z-index: 9999;
+      display: none;
+      animation: slideIn 0.4s ease;
+      flex-direction: column;
+      padding: 20px;
+    }
+    
+    .game-window.active {
+      display: flex;
+    }
+    
+    @keyframes slideIn {
+      from { transform: translateY(100%); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+    
+    .game-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      border-bottom: 1px solid rgba(168, 85, 247, 0.3);
+      padding-bottom: 15px;
+    }
+    
+    .game-header h2 {
+      margin: 0;
+      color: #fff;
+      font-size: 24px;
+    }
+    
+    .header-stats {
+      display: flex;
+      gap: 30px;
+      align-items: center;
+    }
+    
+    .header-stat {
+      color: #cbd5e1;
+      font-weight: 600;
+    }
+    
+    .header-stat span {
+      color: #a855f7;
+      font-size: 18px;
+      font-weight: 700;
+    }
+    
+    .game-grid-container {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .game-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      width: 100%;
+      max-width: 600px;
+      aspect-ratio: 1;
+    }
+    
+    .game-grid .tile {
+      background: #1f2a44;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.08);
+      cursor: pointer;
+      transition: all 0.12s ease;
+    }
+    
+    .game-grid .tile:hover {
+      border-color: rgba(168, 85, 247, 0.5);
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="navbar">
+      <div class="brand"><span class="tag">Game</span><a href="../index.html">Focus Frontier</a> / Pattern Path</div>
+      <div class="badges" id="user-chip"></div>
+    </div>
+  </header>
+  <main>
+    <div class="section-title"><h2>Pattern Path</h2><div class="badges"><span class="badge">Flexibility</span><span class="badge">Working Memory</span></div></div>
+    <div class="split">
+      <div class="panel">
+        <div class="stat-line"><span>Round</span><strong id="round">0</strong></div>
+        <div class="stat-line"><span>Timer (s)</span><strong id="timer">0</strong></div>
+        <div class="stat-line"><span>Mode</span>
+          <select id="mode" aria-label="Mode" style="padding:6px 10px;border-radius:8px;background:#0f182b;color:var(--text);border:1px solid rgba(255,255,255,0.08)">
+            <option value="timed">Timed</option>
+            <option value="elimination">Elimination</option>
+          </select>
+        </div>
+        <div class="stat-line" id="time-row"><span>Time limit</span>
+          <select id="time" aria-label="Time limit" style="padding:6px 10px;border-radius:8px;background:#0f182b;color:var(--text);border:1px solid rgba(255,255,255,0.08)">
+            <option value="30">30s</option>
+            <option value="60" selected>60s</option>
+            <option value="90">90s</option>
+            <option value="120">120s</option>
+            <option value="180">180s</option>
+          </select>
+        </div>
+        <div class="stat-line"><span>Difficulty</span>
+          <select id="difficulty" aria-label="Difficulty" style="padding:6px 10px;border-radius:8px;background:#0f182b;color:var(--text);border:1px solid rgba(255,255,255,0.08)">
+            <option value="beginner">Beginner</option>
+            <option value="intermediate">Intermediate</option>
+            <option value="advanced">Advanced</option>
+          </select>
+        </div>
+        <div style="display:flex; gap:10px; margin-top:14px;">
+          <button class="btn" id="start">Start Game</button>
+          <button class="btn secondary" onclick="window.location='/client/index.html'">Back to Hub</button>
+        </div>
+      </div>
+      <div class="game-stage" id="grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:18px;"></div>
+    </div>
+  </main>
+  
+  <!-- Game Window -->
+  <div class="game-window" id="game-window">
+    <div class="game-header">
+      <h2>Pattern Path</h2>
+      <div class="header-stats">
+        <div class="header-stat">Round: <span id="game-round">0</span></div>
+        <div class="header-stat">Score: <span id="game-score">0</span></div>
+        <div class="header-stat">Time: <span id="game-window-timer">∞</span></div>
+        <button class="btn secondary" id="quit-game" style="padding: 8px 16px; font-size: 14px;">Quit</button>
+      </div>
+    </div>
+    <div class="game-grid-container">
+      <div class="game-grid" id="game-grid"></div>
+    </div>
+  </div>
+
+  <div class="countdown-overlay" id="countdown-overlay" style="display: none;">
+    <div class="countdown-number" id="countdown-number">3</div>
+  </div>
+
+  <!-- HUD Overlay -->
+  <div id="game-hud">
+    <div class="hud-stat">
+      <div class="label">Round</div>
+      <div class="value" id="hud-round">0</div>
+    </div>
+    <div class="hud-stat">
+      <div class="label">Time</div>
+      <div class="value" id="hud-timer">0</div>
+    </div>
+  </div>
+
+  <!-- Countdown Overlay -->
+  <div id="countdown-overlay">
+    <div id="countdown-number">3</div>
+  </div>
+
+  <!-- Results Modal -->
+  <div id="results-modal">
+    <div class="results-content">
+      <div class="results-title" id="results-title">Game Over!</div>
+      <div class="results-subtitle" id="results-message">Great job!</div>
+      <div class="results-score" id="results-score">0</div>
+      <div class="results-stats">
+        <div class="result-stat">
+          <div class="label">Final Round</div>
+          <div class="value" id="results-round">0</div>
+        </div>
+        <div class="result-stat">
+          <div class="label">Mode</div>
+          <div class="value" id="results-mode">-</div>
+        </div>
+        <div class="result-stat">
+          <div class="label">Difficulty</div>
+          <div class="value" id="results-difficulty">-</div>
+        </div>
+        <div class="result-stat">
+          <div class="label">Time</div>
+          <div class="value" id="results-time">-</div>
+        </div>
+      </div>
+      <div class="results-actions">
+        <button class="btn" id="play-again">Play Again</button>
+        <button class="btn secondary" onclick="window.location='/client/index.html'">Back to Hub</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="../assets/app.js"></script>
+  <script src="../assets/game-utils.js"></script>
+  <script src="../assets/ml-client.js"></script>
+  <script>
+    renderUserChip('#user-chip');
+    const grid = document.getElementById('grid');
+    const gameGrid = document.getElementById('game-grid');
+    const gameWindow = document.getElementById('game-window');
+    const roundEl = document.getElementById('round');
+    const timerEl = document.getElementById('timer');
+    const diffEl = document.getElementById('difficulty');
+    const modeEl = document.getElementById('mode');
+    const timeEl = document.getElementById('time');
+    const timeRow = document.getElementById('time-row');
+    const gameRoundEl = document.getElementById('game-round');
+    const gameScoreEl = document.getElementById('game-score');
+    const gameTimerEl = document.getElementById('game-window-timer');
+    const countdownOverlay = document.getElementById('countdown-overlay');
+    const countdownNumber = document.getElementById('countdown-number');
+
+    const sound = new GameUtils.SoundManager();
+    const stats = new GameUtils.GameStats('patternPath');
+    const tracker = new GameUtils.PerformanceTracker();
+    const mlClient = new MLClient();
+
+    let sessionId = null;
+    let sequence = [];
+    let player = [];
+    let round = 0;
+    let score = 0;
+    let paused = false;
+    let countdown = null;
+    let totalTimer = null;
+    let gameActive = false;
+    let ended = false;
+
+    function buildGrid() {
+      grid.innerHTML = '';
+      gameGrid.innerHTML = '';
+      for (let i = 0; i < 16; i++) {
+        // Menu grid
+        const tile = document.createElement('div');
+        tile.style.background = '#1f2a44';
+        tile.style.borderRadius = '12px';
+        tile.style.border = '1px solid rgba(255,255,255,0.08)';
+        tile.dataset.index = i;
+        tile.onclick = () => handleClick(i, tile);
+        grid.appendChild(tile);
+        
+        // Game window grid
+        const gameTile = document.createElement('div');
+        gameTile.className = 'tile';
+        gameTile.dataset.index = i;
+        gameTile.onclick = () => handleClick(i, gameTile);
+        gameGrid.appendChild(gameTile);
+      }
+    }
+    
+    function showCountdown() {
+      return new Promise((resolve) => {
+        countdownOverlay.style.display = 'flex';
+        let count = 3;
+        
+        function updateCountdown() {
+          countdownNumber.textContent = count;
+          sound.click();
+          
+          if (count > 1) {
+            count--;
+            setTimeout(updateCountdown, 1000);
+          } else {
+            setTimeout(() => {
+              countdownNumber.textContent = 'GO!';
+              countdownNumber.style.color = '#a855f7';
+              sound.success();
+              setTimeout(() => {
+                countdownOverlay.style.display = 'none';
+                countdownNumber.style.color = '#fff';
+                resolve();
+              }, 800);
+            }, 1000);
+          }
+        }
+        
+        updateCountdown();
+      });
+    }
+    
+    function openGameWindow() {
+      gameWindow.classList.add('active');
+      document.querySelector('header').style.display = 'none';
+      document.querySelector('main').style.display = 'none';
+    }
+    
+    function closeGameWindow() {
+      gameWindow.classList.remove('active');
+      document.querySelector('header').style.display = 'block';
+      document.querySelector('main').style.display = 'block';
+    }
+    
+    function updateGameDisplay() {
+      gameRoundEl.textContent = round;
+      gameScoreEl.textContent = score;
+    }
+
+    function timePerRound() {
+      if (diffEl.value === 'advanced') return 8;
+      if (diffEl.value === 'intermediate') return 12;
+      return 14;
+    }
+
+    function syncModeUI() {
+      const timed = modeEl.value === 'timed';
+      timeRow.style.display = timed ? 'flex' : 'none';
+      timerEl.textContent = timed ? timeEl.value : '∞';
+    }
+
+    function startTotalTimer() {
+      clearInterval(totalTimer);
+      if (modeEl.value !== 'timed') {
+        timerEl.textContent = '∞';
+        gameTimerEl.textContent = '∞';
+        return;
+      }
+      let t = parseInt(timeEl.value, 10);
+      timerEl.textContent = t;
+      gameTimerEl.textContent = t;
+      totalTimer = setInterval(() => {
+        if (paused || ended) return;
+        t -= 1;
+        timerEl.textContent = t;
+        gameTimerEl.textContent = t;
+        if (t <= 0) endGame('Time Up!');
+      }, 1000);
+    }
+
+    async function startGame() {
+      // Load ML difficulty recommendation
+      const mlRecommendation = await mlClient.getDifficultyRecommendation('patternPath');
+      if (mlRecommendation?.autoAdjust) {
+        diffEl.value = mlRecommendation.suggestedDifficulty;
+      }
+      if (mlRecommendation) {
+        mlClient.displayDifficultyWidget('difficulty-widget-pattern', mlRecommendation);
+      }
+      
+      paused = false;
+      ended = false;
+      gameActive = true;
+      round = 0;
+      score = 0;
+      sequence = [];
+      player = [];
+      roundEl.textContent = '0';
+      buildGrid();
+      sessionId = await startSession('patternPath', diffEl.value);
+      tracker.track('game_started');
+      
+      // Show countdown
+      await showCountdown();
+      
+      // Open game window
+      openGameWindow();
+      updateGameDisplay();
+      
+      startTotalTimer();
+      nextRound();
+    }
+
+    async function nextRound() {
+      if (paused) return;
+      round += 1;
+      roundEl.textContent = round;
+      gameRoundEl.textContent = round;
+      
+      // Award 5 points per completed round
+      score += 5;
+      gameScoreEl.textContent = score;
+      
+      extendSequence();
+      player = [];
+      await playSequence();
+      if (modeEl.value === 'elimination') startTimer();
+    }
+
+    function extendSequence() {
+      if (!sequence.length) { sequence.push(Math.floor(Math.random() * 16)); return; }
+      const last = sequence[sequence.length - 1];
+      const neighbors = [last-4,last+4,(last%4!==0)?last-1:-1,(last%4!==3)?last+1:-1].filter(n => n>=0 && n<16);
+      sequence.push(neighbors[Math.floor(Math.random()*neighbors.length)]);
+    }
+
+    function delay(ms){ return new Promise(r => setTimeout(r, ms)); }
+
+    async function playSequence() {
+      const tiles = Array.from(grid.children);
+      const gameTiles = Array.from(gameGrid.children);
+      for (const idx of sequence) {
+        tiles[idx].style.background = '#a855f7';
+        gameTiles[idx].style.background = '#a855f7';
+        await delay(320);
+        tiles[idx].style.background = '#1f2a44';
+        gameTiles[idx].style.background = '#1f2a44';
+        await delay(160);
+      }
+    }
+
+    function startTimer() {
+      let t = timePerRound();
+      timerEl.textContent = t;
+      gameTimerEl.textContent = t;
+      clearInterval(countdown);
+      countdown = setInterval(() => {
+        if (paused || ended) return;
+        t -= 1;
+        timerEl.textContent = t;
+        gameTimerEl.textContent = t;
+        if (t <= 0) {
+          clearInterval(countdown);
+          score = Math.max(0, score - 1);
+          gameScoreEl.textContent = score;
+          recordMetrics(sessionId, [{ name: 'timeout', value: 1, skill: 'cognitive_flexibility', difficulty: diffEl.value }], false);
+          endGame('Time Up!');
+        }
+      }, 1000);
+    }
+
+    async function handleClick(idx, tile) {
+      if (!gameActive || ended || paused || !sequence.length) return;
+      player.push(idx);
+      tile.style.background = '#34d399';
+      await delay(120);
+      tile.style.background = '#1f2a44';
+      const correct = sequence[player.length - 1] === idx;
+      if (!correct) {
+        clearInterval(countdown);
+        score = Math.max(0, score - 2);
+        gameScoreEl.textContent = score;
+        toast('Wrong tile! -2 points', 'error');
+        sound.error();
+        await recordMetrics(sessionId, [{ name: 'error', value: 1, skill: 'cognitive_flexibility', difficulty: diffEl.value }], false);
+        return endGame('Wrong tile');
+      }
+      sound.success();
+      if (player.length === sequence.length) {
+        await recordMetrics(sessionId, [{ name: 'round', value: round, skill: 'cognitive_flexibility', difficulty: diffEl.value }], false);
+        await delay(500);
+        nextRound();
+      }
+    }
+
+    async function endGame(message) {
+      if (ended) return;
+      ended = true;
+      gameActive = false;
+      clearInterval(countdown);
+      clearInterval(totalTimer);
+      
+      await recordMetrics(sessionId, [{ name: 'round', value: round, skill: 'cognitive_flexibility', difficulty: diffEl.value }], true);
+      tracker.track('game_ended', { round, score });
+      
+      // Send session data to ML for analysis
+      await mlClient.analyzeSessionComplete({
+        gameKey: 'patternPath',
+        duration: tracker.getTotalTime?.() || 0,
+        score: score,
+        metrics: [
+          { name: 'score', value: score },
+          { name: 'round', value: round },
+          { name: 'difficulty', value: diffEl.value }
+        ]
+      });
+      
+      const isHighScore = stats.update(score, round);
+      if (isHighScore && score > 0) {
+        sound.win();
+        toast(`🏆 New High Score: ${score}!`, 'success');
+      }
+      
+      toast(`${message}! Final Score: ${score}`, 'error');
+      sound.error();
+      
+      // Wait a moment then close game window
+      setTimeout(() => {
+        closeGameWindow();
+      }, 2000);
+    }
+
+    document.getElementById('start').addEventListener('click', startGame);
+    
+    document.getElementById('quit-game')?.addEventListener('click', async () => {
+      if (confirm('Are you sure you want to quit? Your progress will be saved.')) {
+        await endGame('Player quit');
+        closeGameWindow();
+      }
+    });
+    
+    modeEl.addEventListener('change', syncModeUI);
+    timeEl.addEventListener('change', syncModeUI);
+    syncModeUI();
+    
+    window.addEventListener('beforeunload', () => {
+      if (sessionId) {
+        recordMetrics(sessionId, [{ name: 'round', value: round, skill: 'cognitive_flexibility', difficulty: diffEl.value }], true);
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ML Results Display Example</title>
+  <link rel="stylesheet" href="../assets/style.css">
+  <link rel="stylesheet" href="../assets/game-styles.css">
+  <link rel="stylesheet" href="../assets/ml-styles.css">
+  <style>
+    body {
+      background: #f5f5f5;
+      padding: 20px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+    
+    .demo-container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    }
+    
+    .demo-title {
+      text-align: center;
+      color: #333;
+      margin-bottom: 30px;
+      padding-bottom: 20px;
+      border-bottom: 2px solid #667eea;
+    }
+    
+    /* Results Display Styles */
+    .game-results-container {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 30px;
+      border-radius: 12px;
+      margin-bottom: 30px;
+    }
+    
+    .results-summary h2 {
+      margin: 0 0 20px 0;
+      font-size: 32px;
+      text-align: center;
+    }
+    
+    .score-display {
+      text-align: center;
+      margin: 30px 0;
+      padding: 20px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 8px;
+    }
+    
+    .score-value {
+      font-size: 72px;
+      font-weight: bold;
+      line-height: 1;
+      text-shadow: 0 4px 10px rgba(0,0,0,0.2);
+    }
+    
+    .score-label {
+      font-size: 16px;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      margin-top: 10px;
+      opacity: 0.9;
+    }
+    
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+      margin-top: 30px;
+    }
+    
+    .stat {
+      text-align: center;
+      padding: 15px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 8px;
+    }
+    
+    .stat-label {
+      display: block;
+      font-size: 14px;
+      opacity: 0.8;
+      margin-bottom: 8px;
+    }
+    
+    .stat-value {
+      display: block;
+      font-size: 28px;
+      font-weight: bold;
+    }
+    
+    .ml-insights {
+      background: white;
+      color: #333;
+      padding: 25px;
+      border-radius: 8px;
+      margin-top: 20px;
+    }
+    
+    .ml-insights h3 {
+      margin: 0 0 20px 0;
+      color: #667eea;
+      font-size: 24px;
+    }
+    
+    .improvement-section {
+      background: #f8f9fa;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 15px;
+      border-left: 4px solid #4caf50;
+    }
+    
+    .improvement-section p {
+      margin: 10px 0;
+      line-height: 1.6;
+    }
+    
+    .improvement-section strong {
+      color: #667eea;
+    }
+    
+    .recommendation {
+      background: #fff3cd;
+      padding: 15px;
+      border-radius: 6px;
+      border-left: 4px solid #ffc107;
+      margin-top: 15px;
+      font-style: italic;
+    }
+    
+    .difficulty-suggestion {
+      background: #e7f3ff;
+      padding: 20px;
+      border-radius: 8px;
+      border-left: 4px solid #2196F3;
+    }
+    
+    .difficulty-suggestion p {
+      margin: 10px 0;
+    }
+    
+    .confidence {
+      color: #666;
+      font-size: 14px;
+    }
+    
+    .results-actions {
+      display: flex;
+      gap: 15px;
+      margin-top: 30px;
+      justify-content: center;
+    }
+    
+    .btn {
+      padding: 12px 30px;
+      border: none;
+      border-radius: 6px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+    
+    .btn-primary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+    
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+    }
+    
+    .btn-secondary {
+      background: #4caf50;
+      color: white;
+    }
+    
+    .btn-tertiary {
+      background: #e0e0e0;
+      color: #333;
+    }
+    
+    .location-info {
+      background: #f8f9fa;
+      padding: 20px;
+      border-radius: 8px;
+      margin-top: 30px;
+      border-left: 4px solid #667eea;
+    }
+    
+    .location-info h3 {
+      margin: 0 0 15px 0;
+      color: #667eea;
+    }
+    
+    .location-info code {
+      background: #333;
+      color: #4caf50;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+    
+    .location-info ul {
+      margin: 10px 0;
+      padding-left: 20px;
+    }
+    
+    .location-info li {
+      margin: 8px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="demo-container">
+    <div class="demo-title">
+      <h1>🎮 ML Results Display - Visual Example</h1>
+      <p>This is what players see when a game ends with ML analysis</p>
+    </div>
+
+    <!-- THIS IS THE ACTUAL RESULTS DISPLAY -->
+    <div id="game-results">
+      <div class="game-results-container">
+        <div class="results-summary">
+          <h2>🎉 Game Complete!</h2>
+          
+          <div class="score-display">
+            <div class="score-value">8,500</div>
+            <div class="score-label">Points</div>
+          </div>
+          
+          <div class="stats-grid">
+            <div class="stat">
+              <span class="stat-label">Accuracy</span>
+              <span class="stat-value">85.0%</span>
+            </div>
+            <div class="stat">
+              <span class="stat-label">Time</span>
+              <span class="stat-value">120.5s</span>
+            </div>
+            <div class="stat">
+              <span class="stat-label">Moves</span>
+              <span class="stat-value">24</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- ML INSIGHTS SECTION -->
+        <div class="ml-insights">
+          <h3>🤖 AI Insights</h3>
+          
+          <!-- Performance Trend -->
+          <div class="improvement-section">
+            <p><strong>Trend:</strong> 📈 Improving</p>
+            <p><strong>Primary Focus:</strong> Pattern Recognition & Visual Discrimination</p>
+            <p class="recommendation">
+              💡 Great progress! Your accuracy has improved by 15% over the last 5 sessions. 
+              Try increasing difficulty to continue challenging yourself.
+            </p>
+          </div>
+          
+          <!-- Next Difficulty Recommendation -->
+          <div class="difficulty-suggestion">
+            <p><strong>Next Challenge:</strong> 🎯 Hard Difficulty</p>
+            <p class="confidence">(87% confidence)</p>
+            <p style="margin-top: 10px;">
+              Based on your performance, you're ready for a harder challenge. 
+              The AI predicts you'll achieve around 70-75% accuracy on hard mode.
+            </p>
+          </div>
+
+          <!-- Skills Improved (Optional) -->
+          <div style="margin-top: 20px; padding: 15px; background: #f0f8ff; border-radius: 8px;">
+            <p><strong>💪 Skills Improved:</strong></p>
+            <ul style="margin: 10px 0 0 20px;">
+              <li>✓ Visual Discrimination (+12%)</li>
+              <li>✓ Pattern Recognition (+8%)</li>
+              <li>✓ Short-term Memory (+5%)</li>
+            </ul>
+          </div>
+
+          <!-- Areas to Focus (Optional) -->
+          <div style="margin-top: 15px; padding: 15px; background: #fff3e0; border-radius: 8px;">
+            <p><strong>🎯 Areas to Focus:</strong></p>
+            <ul style="margin: 10px 0 0 20px;">
+              <li>→ Processing Speed (could be faster)</li>
+              <li>→ Sustained Attention (some mid-game drops)</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="results-actions">
+          <button class="btn btn-primary" onclick="alert('Play Again!')">
+            🔄 Play Again
+          </button>
+          <button class="btn btn-secondary" onclick="alert('View Dashboard!')">
+            📊 View Dashboard
+          </button>
+          <button class="btn btn-tertiary" onclick="alert('Back to Home!')">
+            🏠 Back to Home
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- LOCATION INFORMATION -->
+    <div class="location-info">
+      <h3>📍 Where This Appears</h3>
+      <p><strong>In the Game UI:</strong></p>
+      <ul>
+        <li>Element: <code>&lt;div id="game-results"&gt;&lt;/div&gt;</code></li>
+        <li>Generated by: <code>showGameResults()</code> method in GameEngine</li>
+        <li>Triggered: Automatically when <code>endGame()</code> is called</li>
+        <li>Location in code: <code>client/assets/game-engine-ml.js</code> (line 470-530)</li>
+      </ul>
+
+      <p style="margin-top: 20px;"><strong>When It Shows:</strong></p>
+      <ul>
+        <li>✓ Player completes a game</li>
+        <li>✓ Game timer expires</li>
+        <li>✓ Player reaches win condition</li>
+        <li>✓ Game is manually ended</li>
+      </ul>
+
+      <p style="margin-top: 20px;"><strong>Data Sources:</strong></p>
+      <ul>
+        <li><strong>Score/Stats:</strong> From <code>this.gameMetrics</code> (tracked during gameplay)</li>
+        <li><strong>AI Insights:</strong> From ML backend API <code>/api/ml/session-complete</code></li>
+        <li><strong>Trend Analysis:</strong> From <code>performanceAnalyzer.js</code> (last 5 sessions)</li>
+        <li><strong>Difficulty Rec:</strong> From <code>difficultyAdapter.js</code> (70% target algorithm)</li>
+      </ul>
+    </div>
+
+    <!-- EXAMPLE CODE -->
+    <div class="location-info" style="margin-top: 20px; border-left-color: #4caf50;">
+      <h3>💻 How It's Triggered in Your Games</h3>
+      <pre style="background: #1e1e1e; color: #d4d4d4; padding: 20px; border-radius: 8px; overflow-x: auto;"><code>// In any game (e.g., memory-matrix-ml.js)
+class MemoryMatrixGame extends GameEngine {
+  
+  completeGame() {
+    this.isGameActive = false;
+    
+    // Calculate final metrics
+    this.gameMetrics.score = this.calculateScore();
+    this.gameMetrics.accuracy = this.matches / (this.matches + this.misses);
+    this.gameMetrics.moves = this.matches + this.misses;
+    
+    // THIS TRIGGERS THE RESULTS DISPLAY! 👇
+    this.endGame(); // ← GameEngine method
+    
+    // endGame() automatically:
+    // 1. Saves metrics to database
+    // 2. Calls ML analysis API
+    // 3. Displays results with showGameResults()
+  }
+}</code></pre>
+    </div>
+
+    <!-- TESTING INSTRUCTIONS -->
+    <div class="location-info" style="margin-top: 20px; border-left-color: #ff9800;">
+      <h3>🧪 How to See It Live</h3>
+      <ol style="margin: 10px 0; padding-left: 20px;">
+        <li><strong>Start servers:</strong> Backend on :4000, Frontend on :8080</li>
+        <li><strong>Navigate to:</strong> http://127.0.0.1:8080/client/auth.html</li>
+        <li><strong>Login/Register</strong> an account</li>
+        <li><strong>Go to games menu</strong> and select any game</li>
+        <li><strong>Play the game</strong> until it ends</li>
+        <li><strong>See this display!</strong> Results appear automatically</li>
+      </ol>
+      
+      <p style="margin-top: 15px; padding: 15px; background: #fff3cd; border-radius: 6px;">
+        <strong>💡 Tip:</strong> The ML insights only appear if you have previous sessions. 
+        Play the same game 2-3 times to see the full ML analysis with trends and recommendations!
+      </p>
+    </div>
+  </div>
+</body>
+</html>

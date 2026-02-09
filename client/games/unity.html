@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Unity WebGL</title>
+  <link rel="stylesheet" href="../assets/style.css" />
+</head>
+<body>
+  <header>
+    <div class="navbar">
+      <div class="brand"><span class="tag">Unity</span><a href="../index.html">Focus Frontier</a> / WebGL</div>
+      <div class="badges" id="user-chip"></div>
+    </div>
+  </header>
+  <main>
+    <div class="section-title"><h2>Unity Build</h2><div class="badges"><span class="badge">External</span></div></div>
+    <div class="panel" style="margin-bottom:14px;">
+      <p>Load your WebGL build and we will forward telemetry events to the API. Inside Unity, post messages like <code>{ type: 'telemetry', gameKey: 'unityGame', metric: 'score', value: 123 }</code>.</p>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+        <label>Build path</label>
+        <input id="src" type="text" value="/unity/webgl/Build/index.html" style="padding:8px 10px;border-radius:8px;border:1px solid rgba(255,255,255,0.2);background:#0f182b;color:var(--text);flex:1;">
+        <button class="btn" id="load">Load</button>
+        <button class="btn secondary" id="send">Ping</button>
+      </div>
+    </div>
+    <div class="game-stage" style="height:520px;padding:0;">
+      <iframe id="frame" src="about:blank" title="Unity Build" style="width:100%;height:100%;border:0;"></iframe>
+    </div>
+  </main>
+
+  <script src="../assets/app.js"></script>
+  <script>
+    renderUserChip('#user-chip');
+    const frame = document.getElementById('frame');
+    document.getElementById('load').onclick = () => { frame.src = document.getElementById('src').value || '/unity/webgl/Build/index.html'; };
+    document.getElementById('send').onclick = () => { frame.contentWindow?.postMessage({ type: 'from-parent', hello: true, ts: Date.now() }, '*'); };
+
+    window.addEventListener('message', async (e) => {
+      const d = e.data || {};
+      if (d.type === 'telemetry' && d.gameKey) {
+        const session = await startSession(d.gameKey, d.difficulty || null);
+        const m = [{ name: d.metric || 'score', value: Number(d.value || 0), skill: d.skill || null, difficulty: d.difficulty || null }];
+        await recordMetrics(session, m, !!d.end);
+        toast('Telemetry recorded');
+      }
+    });
+  </script>
+</body>
+</html>

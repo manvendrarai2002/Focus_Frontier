@@ -1,0 +1,303 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Analytics</title>
+  <link rel="stylesheet" href="assets/style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <header>
+    <div class="navbar">
+      <div class="brand"><span class="tag">Analytics</span><a href="index.html">Focus Frontier</a></div>
+      <div class="badges" id="user-chip"></div>
+    </div>
+  </header>
+  <main>
+    <div class="section-title">
+      <h2>Performance Overview</h2>
+      <div class="badges">
+        <span class="badge" id="range-label">Rolling 30 days</span>
+      </div>
+    </div>
+    <div class="panel" style="margin-bottom:16px;">
+      <h3 style="margin-top:0">Metrics & Units</h3>
+      <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(220px,1fr));">
+        <div class="banner"><div><strong>Avg Score</strong><div style="color:var(--muted); font-size:13px;">Unit: points (higher is better)</div></div></div>
+        <div class="banner"><div><strong>Avg Duration</strong><div style="color:var(--muted); font-size:13px;">Unit: seconds (s)</div></div></div>
+        <div class="banner"><div><strong>Sessions</strong><div style="color:var(--muted); font-size:13px;">Count of completed sessions</div></div></div>
+        <div class="banner"><div><strong>Trend</strong><div style="color:var(--muted); font-size:13px;">Daily average score (points)</div></div></div>
+      </div>
+    </div>
+    <div class="panel" style="margin-bottom:16px;">
+      <div class="split" style="align-items:center;">
+        <div>
+          <div class="stat-line"><span>Scope</span>
+            <select id="scope" aria-label="Analytics scope">
+              <option value="me">My data</option>
+              <option value="all">All users</option>
+            </select>
+          </div>
+          <div class="stat-line"><span>Days</span>
+            <input id="days" type="number" min="7" max="180" value="30" style="width:100%;" aria-label="Analytics days" />
+          </div>
+          <label style="display:flex; gap:8px; align-items:center; margin-top:10px;">
+            <input id="compare" type="checkbox" />
+            Compare to previous period
+          </label>
+        </div>
+        <div>
+          <div style="display:flex; gap:10px; flex-wrap:wrap;">
+            <button class="btn secondary" id="refresh">Refresh</button>
+            <button class="btn secondary" id="download-json">Download JSON</button>
+            <button class="btn secondary" id="download-csv">Download CSV</button>
+            <button class="btn secondary" id="download-sessions">Download Sessions</button>
+          </div>
+          <div style="margin-top:10px; color:var(--muted); font-size:13px;">
+            Downloads include charts, skills, and recommendations. Sessions require login.
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="split">
+      <div class="panel"><h3>Per game (points)</h3><canvas id="chart-games" height="220"></canvas></div>
+      <div class="panel"><h3>Trend (daily avg points)</h3><canvas id="chart-trend" height="220"></canvas></div>
+    </div>
+    <div class="section-title"><h2>Comparison</h2></div>
+    <div class="panel" id="compare-panel">Enable comparison to see changes.</div>
+    <div class="section-title"><h2>Clinical Summary</h2></div>
+    <div class="split">
+      <div class="panel" id="clinical-summary">Loading summary...</div>
+      <div class="panel" id="improvement-plan">Loading improvement plan...</div>
+    </div>
+    <div class="section-title"><h2>Skill buckets</h2></div>
+    <div class="split">
+      <div class="panel"><h3>Skills table (points)</h3><table class="table" id="skills-table"></table></div>
+      <div class="panel"><h3>Recommendations</h3><div id="recs" class="grid"></div></div>
+    </div>
+  </main>
+
+  <script src="assets/app.js"></script>
+  <script>
+    renderUserChip('#user-chip');
+    let cg, ct;
+    let lastData = null;
+    let lastCompare = null;
+
+    function scopeDefault() {
+      return localStorage.getItem('auth_token') ? 'me' : 'all';
+    }
+
+    function setRangeLabel(days) {
+      const label = document.getElementById('range-label');
+      label.textContent = `Rolling ${days} days`;
+    }
+
+    function renderCompare(current, previous) {
+      const panel = document.getElementById('compare-panel');
+      if (!previous) {
+        panel.textContent = 'Enable comparison to see changes.';
+        return;
+      }
+      const delta = (a, b) => (a - b);
+      const fmt = (v) => (Number.isFinite(v) ? v.toFixed(2) : '0.00');
+      const curr = current.overall || { sessions: 0, avgScore: 0, avgDuration: 0 };
+      const prev = previous.overall || { sessions: 0, avgScore: 0, avgDuration: 0 };
+      panel.innerHTML = `
+        <div class="split">
+          <div class="banner"><div><strong>Sessions</strong><div style="color:var(--muted); font-size:13px;">Current: ${curr.sessions}</div></div><span class="chip">Δ ${delta(curr.sessions, prev.sessions)}</span></div>
+          <div class="banner"><div><strong>Avg Score</strong><div style="color:var(--muted); font-size:13px;">Current: ${fmt(curr.avgScore)}</div></div><span class="chip">Δ ${fmt(delta(curr.avgScore, prev.avgScore))}</span></div>
+          <div class="banner"><div><strong>Avg Duration (s)</strong><div style="color:var(--muted); font-size:13px;">Current: ${fmt(curr.avgDuration)}</div></div><span class="chip">Δ ${fmt(delta(curr.avgDuration, prev.avgDuration))}</span></div>
+        </div>
+      `;
+    }
+
+    function summarizeTrend(trend = []) {
+      if (!trend.length) return { direction: 'flat', delta: 0 };
+      const mid = Math.floor(trend.length / 2);
+      const first = trend.slice(0, mid).map(t => t.avg);
+      const second = trend.slice(mid).map(t => t.avg);
+      const avg = (arr) => arr.length ? arr.reduce((a,b)=>a+b,0) / arr.length : 0;
+      const d = avg(second) - avg(first);
+      return { direction: d > 0.5 ? 'up' : d < -0.5 ? 'down' : 'flat', delta: d };
+    }
+
+    function buildClinicalSummary(data) {
+      const overall = data.overall || { sessions: 0, avgScore: 0, avgDuration: 0 };
+      const skills = data.skills || [];
+      const trend = summarizeTrend(data.trend || []);
+
+      const weakest = skills.slice().sort((a,b) => a.avg - b.avg).slice(0, 2);
+      const strongest = skills.slice().sort((a,b) => b.avg - a.avg).slice(0, 2);
+
+      return {
+        overview: `Sessions: ${overall.sessions} • Avg score: ${overall.avgScore} pts • Avg duration: ${overall.avgDuration} s`,
+        trend: trend.direction === 'up'
+          ? `Performance improving (+${trend.delta.toFixed(2)} pts vs prior period).`
+          : trend.direction === 'down'
+            ? `Performance declining (${trend.delta.toFixed(2)} pts vs prior period).`
+            : 'Performance stable over time.',
+        weakest: weakest.map(s => s.skill.replace(/_/g,' ')),
+        strongest: strongest.map(s => s.skill.replace(/_/g,' '))
+      };
+    }
+
+    function buildImprovementPlan(data) {
+      const skills = data.skills || [];
+      const bySkill = skills.slice().sort((a,b)=>a.avg-b.avg);
+      const target = bySkill.slice(0, 3);
+      const plan = target.map((s, i) => ({
+        skill: s.skill.replace(/_/g,' '),
+        avg: s.avg,
+        priority: i === 0 ? 'High' : i === 1 ? 'Medium' : 'Low',
+        action: `Increase drills mapped to ${s.skill.replace(/_/g,' ')}.`
+      }));
+      return plan;
+    }
+
+    function renderClinical(data) {
+      const summary = buildClinicalSummary(data);
+      const plan = buildImprovementPlan(data);
+      const clinicalEl = document.getElementById('clinical-summary');
+      const planEl = document.getElementById('improvement-plan');
+
+      clinicalEl.innerHTML = `
+        <h3 style="margin-top:0">Behavioral Snapshot</h3>
+        <div class="banner"><div><strong>Overview</strong><div style="color:var(--muted); font-size:13px;">${summary.overview}</div></div></div>
+        <div class="banner"><div><strong>Trend</strong><div style="color:var(--muted); font-size:13px;">${summary.trend}</div></div></div>
+        <div class="banner"><div><strong>Strongest Skills</strong><div style="color:var(--muted); font-size:13px;">${summary.strongest.join(', ') || 'Insufficient data'}</div></div></div>
+        <div class="banner"><div><strong>Weakest Skills</strong><div style="color:var(--muted); font-size:13px;">${summary.weakest.join(', ') || 'Insufficient data'}</div></div></div>
+      `;
+
+      planEl.innerHTML = `
+        <h3 style="margin-top:0">Improvement Plan</h3>
+        <table class="table">
+          <tr><th>Priority</th><th>Skill</th><th>Avg (pts)</th><th>Recommended Action</th></tr>
+          ${plan.map(p => `<tr><td>${p.priority}</td><td>${p.skill}</td><td>${p.avg}</td><td>${p.action}</td></tr>`).join('')}
+        </table>
+        ${plan.length ? '' : '<p>No data yet. Play more games to generate a plan.</p>'}
+      `;
+    }
+
+    async function render() {
+      try {
+        const scopeEl = document.getElementById('scope');
+        const daysEl = document.getElementById('days');
+        const compareEl = document.getElementById('compare');
+        const scope = scopeEl.value || scopeDefault();
+        const days = Math.max(7, Math.min(180, parseInt(daysEl.value || '30', 10)));
+        setRangeLabel(days);
+
+        const data = await loadAnalytics(scope, days);
+        lastData = data;
+
+        if (compareEl.checked) {
+          const previous = await loadAnalytics(scope, days * 2);
+          const prevWindow = {
+            ...previous,
+            overall: {
+              sessions: Math.max(0, (previous.overall?.sessions || 0) - (data.overall?.sessions || 0)),
+              avgScore: previous.overall?.avgScore || 0,
+              avgDuration: previous.overall?.avgDuration || 0
+            }
+          };
+          lastCompare = prevWindow;
+          renderCompare(data, prevWindow);
+        } else {
+          lastCompare = null;
+          renderCompare(data, null);
+        }
+
+        const labels = Object.keys(data.games || {});
+        const best = labels.map(k => data.games[k].best || 0);
+        const avg = labels.map(k => data.games[k].avg || 0);
+        const trendLabels = (data.trend || []).map(t => t.date);
+        const trendVals = (data.trend || []).map(t => t.avg);
+
+        if (cg) cg.destroy();
+        cg = new Chart(document.getElementById('chart-games').getContext('2d'), {
+          type: 'bar', data: { labels, datasets: [
+            { label: 'Best', data: best, backgroundColor: 'rgba(56,189,248,0.6)' },
+            { label: 'Average', data: avg, backgroundColor: 'rgba(168,85,247,0.6)' }
+          ]}, options: {
+            scales: {
+              y: {
+                beginAtZero: true,
+                title: { display: true, text: 'Points' }
+              }
+            },
+            plugins: {
+              tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: ${ctx.parsed.y} pts` } }
+            }
+          }
+        });
+
+        if (ct) ct.destroy();
+        ct = new Chart(document.getElementById('chart-trend').getContext('2d'), {
+          type: 'line',
+          data: { labels: trendLabels, datasets: [{ label: 'Daily Avg', data: trendVals, borderColor: '#7dd3fc' }] },
+          options: {
+            scales: { y: { beginAtZero: true, title: { display: true, text: 'Points' } } },
+            plugins: { tooltip: { callbacks: { label: (ctx) => `Avg: ${ctx.parsed.y} pts` } } }
+          }
+        });
+
+        const table = document.getElementById('skills-table');
+        table.innerHTML = '<tr><th>Skill</th><th>Avg (points)</th><th>Samples</th></tr>' + (data.skills||[]).map(s => `<tr><td>${s.skill.replace(/_/g,' ')}</td><td>${s.avg}</td><td>${s.samples}</td></tr>`).join('');
+
+        const recs = document.getElementById('recs');
+        recs.innerHTML = (data.recommendations||[]).map(r => `<div class="banner"><div><strong>${r.skill.replace(/_/g,' ')}</strong><div style="color:var(--muted);">${r.focus}</div></div><span class="chip">${r.rationale}</span></div>`).join('') || '<p>No recommendations yet.</p>';
+
+        renderClinical(data);
+      } catch (e) {
+        toast('Analytics unavailable', 'error');
+      }
+    }
+
+    document.getElementById('scope').value = scopeDefault();
+    document.getElementById('refresh').addEventListener('click', render);
+    document.getElementById('scope').addEventListener('change', render);
+    document.getElementById('days').addEventListener('change', render);
+    document.getElementById('compare').addEventListener('change', render);
+
+    document.getElementById('download-csv').addEventListener('click', () => {
+      if (!lastData) return toast('No data to export', 'error');
+      const gameRows = Object.entries(lastData.games || {}).map(([key, v]) => ({
+        game: key,
+        plays: v.plays,
+        best: v.best,
+        avg: v.avg,
+        avgDuration: v.avgDuration
+      }));
+      const skillRows = (lastData.skills || []).map((s) => ({
+        skill: s.skill,
+        avg: s.avg,
+        samples: s.samples
+      }));
+      downloadCsv(`analytics_games_${new Date().toISOString().slice(0,10)}.csv`, gameRows, ['game','plays','best','avg','avgDuration']);
+      downloadCsv(`analytics_skills_${new Date().toISOString().slice(0,10)}.csv`, skillRows, ['skill','avg','samples']);
+    });
+
+    document.getElementById('download-sessions').addEventListener('click', async () => {
+      try {
+        const token = localStorage.getItem('auth_token');
+        if (!token) return toast('Login required to download sessions', 'error');
+        const sessions = await api('/sessions/mine', { method: 'GET' });
+        downloadJson(`sessions_${new Date().toISOString().slice(0,10)}.json`, sessions);
+      } catch (e) {
+        toast('Failed to download sessions', 'error');
+      }
+    });
+
+    document.getElementById('download-json').addEventListener('click', () => {
+      if (!lastData) return toast('No data to export', 'error');
+      const clinical = buildClinicalSummary(lastData);
+      const plan = buildImprovementPlan(lastData);
+      downloadJson(`analytics_${new Date().toISOString().slice(0,10)}.json`, { current: lastData, compare: lastCompare, clinical, plan });
+    });
+
+    render();
+  </script>
+</body>
+</html>

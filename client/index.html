@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Focus Frontier Hub</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <header>
+    <div class="navbar">
+      <div class="brand"><span class="tag">Tier 1</span><span>Focus Frontier</span></div>
+      <div class="badges" id="user-chip"></div>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div>
+        <p class="tag">Neurodiversity-first training</p>
+        <h1>Personalized cognitive drills, one focused hub.</h1>
+        <p>Six mini-games plus clinical assessment suite mapped to attention, working memory, inhibition, and flexibility. Track sessions, surface weak skills, prescribe training, and track neural adaptability.</p>
+        <div class="cta">
+          <a class="btn" href="games/focus-sphere.html">Play Focus Sphere</a>
+          <a class="btn secondary" href="#games">Browse all games</a>
+        </div>
+      </div>
+      <div class="panel">
+        <h3 style="margin-top:0">Training Focus</h3>
+        <div id="rec-list" class="grid"></div>
+        <div style="margin-top:12px; color: var(--muted); font-size: 14px;">Based on recent sessions. Keep scores consistent to sharpen weak skills.</div>
+      </div>
+    </section>
+
+    <div class="section-title" id="games">
+      <h2>Games by skill</h2>
+      <div class="badges">
+        <span class="badge">Attention</span>
+        <span class="badge">Working Memory</span>
+        <span class="badge">Inhibition</span>
+        <span class="badge">Cognitive Flexibility</span>
+      </div>
+    </div>
+    <div class="grid cards">
+      <div class="card">
+        <small>Attention · Processing Speed</small>
+        <h3>Focus Sphere</h3>
+        <p>Rapid target acquisition with pace ramp and accuracy tracking.</p>
+        <div class="badges"><span class="badge">Beginner</span><span class="badge">Click timing</span></div>
+        <div style="margin-top:12px;"><a class="btn" href="games/focus-sphere.html">Open</a></div>
+      </div>
+      <div class="card">
+        <small>Attention · Inhibition</small>
+        <h3>Reflex Runner</h3>
+        <p>Jump or wait? Avoid obstacles with adaptive speed and streak rewards.</p>
+        <div class="badges"><span class="badge">Beginner</span><span class="badge">Impulse control</span></div>
+        <div style="margin-top:12px;"><a class="btn" href="games/reflex-runner.html">Open</a></div>
+      </div>
+      <div class="card">
+        <small>Working Memory</small>
+        <h3>Memory Matrix</h3>
+        <p>Growing sequences, dual-speed playback, and error forgiveness options.</p>
+        <div class="badges"><span class="badge">Intermediate</span><span class="badge">Sequence recall</span></div>
+        <div style="margin-top:12px;"><a class="btn" href="games/memory-matrix.html">Open</a></div>
+      </div>
+      <div class="card">
+        <small>Processing Speed</small>
+        <h3>Shape Sorter</h3>
+        <p>Sort falling shapes with penalty timers and acceleration curves.</p>
+        <div class="badges"><span class="badge">Intermediate</span><span class="badge">Visual scanning</span></div>
+        <div style="margin-top:12px;"><a class="btn" href="games/shape-sorter.html">Open</a></div>
+      </div>
+      <div class="card">
+        <small>Flexibility · Working Memory</small>
+        <h3>Pattern Path</h3>
+        <p>Trace expanding paths with branch variation and windowed time.</p>
+        <div class="badges"><span class="badge">Intermediate</span><span class="badge">Path recall</span></div>
+        <div style="margin-top:12px;"><a class="btn" href="games/pattern-path.html">Open</a></div>
+      </div>
+      <div class="card">
+        <small>Attention · Inhibition</small>
+        <h3>Color Cascade</h3>
+        <p>Stroop-style color matching with time pressure and penalties.</p>
+        <div class="badges"><span class="badge">Advanced</span><span class="badge">Stroop</span></div>
+        <div style="margin-top:12px;"><a class="btn" href="games/color-cascade.html">Open</a></div>
+      </div>
+    </div>
+
+    <div class="section-title">
+      <h2>Clinical Assessment Suite</h2>
+      <div class="badges">
+        <span class="badge">Doctor-Proven</span>
+        <span class="badge">Neuroscience-Based</span>
+        <span class="badge">Diagnostic Grade</span>
+      </div>
+    </div>
+    <div class="grid cards">
+      <div class="card">
+        <small>Working Memory</small>
+        <h3>Dual N-Back</h3>
+        <p>Adaptive working memory training with position, sound, and dual modes. Auto-adjusts from 1-Back to 8-Back.</p>
+        <div class="badges"><span class="badge">Advanced</span><span class="badge">Brain Training</span></div>
+        <div style="margin-top:12px;"><a class="btn" href="games/dual-n-back.html">Open</a></div>
+      </div>
+      <div class="card">
+        <small>Impulse Control</small>
+        <h3>Go/No-Go Task</h3>
+        <p>Standard neuropsychological test for impulse control and inhibition. Used for ADHD diagnosis and assessment.</p>
+        <div class="badges"><span class="badge">Advanced</span><span class="badge">Clinical</span></div>
+        <div style="margin-top:12px;"><a class="btn" href="games/go-no-go.html">Open</a></div>
+      </div>
+      <div class="card">
+        <small>Processing Speed</small>
+        <h3>Trail Making Test</h3>
+        <p>Gold-standard assessment for processing speed and cognitive flexibility. Part A or Part B modes.</p>
+        <div class="badges"><span class="badge">Advanced</span><span class="badge">Diagnostic</span></div>
+        <div style="margin-top:12px;"><a class="btn" href="games/trail-making.html">Open</a></div>
+      </div>
+    </div>
+
+    <div class="section-title">
+      <h2>Analytics</h2>
+      <a class="btn secondary" href="analytics.html">Open analytics</a>
+    </div>
+    <div class="split">
+      <div class="panel">
+        <h3>Per game</h3>
+        <canvas id="chart-games" height="200"></canvas>
+      </div>
+      <div class="panel">
+        <h3>Trend (daily avg)</h3>
+        <canvas id="chart-trend" height="200"></canvas>
+      </div>
+    </div>
+  </main>
+
+  <div class="footer">© 2026 Focus Frontier · Neurodiversity-first training</div>
+
+  <script src="assets/app.js"></script>
+  <script>
+    renderUserChip('#user-chip');
+
+    let cg, ct;
+    async function drawAnalytics() {
+      try {
+        const scope = localStorage.getItem('auth_token') ? 'me' : 'all';
+        const data = await loadAnalytics(scope, 30);
+        const labels = Object.keys(data.games || {});
+        const best = labels.map(k => data.games[k].best || 0);
+        const avg = labels.map(k => data.games[k].avg || 0);
+
+        if (cg) cg.destroy();
+        cg = new Chart(document.getElementById('chart-games').getContext('2d'), {
+          type: 'bar',
+          data: { labels, datasets: [
+            { label: 'Best', data: best, backgroundColor: 'rgba(56,189,248,0.6)' },
+            { label: 'Average', data: avg, backgroundColor: 'rgba(168,85,247,0.6)' }
+          ]},
+          options: { scales: { y: { beginAtZero: true } } }
+        });
+
+        if (ct) ct.destroy();
+        const labels2 = (data.trend || []).map(t => t.date);
+        const vals2 = (data.trend || []).map(t => t.avg);
+        ct = new Chart(document.getElementById('chart-trend').getContext('2d'), {
+          type: 'line',
+          data: { labels: labels2, datasets: [{ label: 'Daily Avg', data: vals2, borderColor: '#7dd3fc' }] },
+          options: { scales: { y: { beginAtZero: true } } }
+        });
+
+        const rec = data.recommendations || [];
+        const recList = document.getElementById('rec-list');
+        if (rec.length === 0) {
+          recList.innerHTML = '<p class="muted">Not enough data yet. Play a game!</p>';
+        } else {
+          recList.innerHTML = rec.map(r => `<div class="banner"><div><strong>${r.skill.replace(/_/g,' ')}</strong><div style="color:var(--muted);font-size:13px;">${r.focus}</div></div><span class="chip">${r.rationale}</span></div>`).join('');
+        }
+      } catch (e) {
+        toast('Analytics unavailable');
+      }
+    }
+
+    drawAnalytics();
+  </script>
+</body>
+</html>

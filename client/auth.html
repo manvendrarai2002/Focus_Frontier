@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Auth · Focus Frontier</title>
+  <link rel="stylesheet" href="assets/style.css" />
+</head>
+<body>
+  <header>
+    <div class="navbar">
+      <div class="brand"><span class="tag">Auth</span><a href="index.html">Focus Frontier</a></div>
+    </div>
+  </header>
+  <main>
+    <div class="split">
+      <form class="panel" id="login" data-mode="login">
+        <h3>Login</h3>
+        <label>Email<br><input name="email" type="email" required style="width:100%;padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,0.15);background:#0f182b;color:var(--text);"></label>
+        <br>
+        <label>Password<br><input name="password" type="password" required style="width:100%;padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,0.15);background:#0f182b;color:var(--text);"></label>
+        <br>
+        <button class="btn" type="submit">Login</button>
+      </form>
+      <form class="panel" id="register" data-mode="register">
+        <h3>Register</h3>
+        <label>Display name<br><input name="displayName" type="text" required style="width:100%;padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,0.15);background:#0f182b;color:var(--text);"></label>
+        <br>
+        <label>Email<br><input name="email" type="email" required style="width:100%;padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,0.15);background:#0f182b;color:var(--text);"></label>
+        <br>
+        <label>Password<br><input name="password" type="password" required style="width:100%;padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,0.15);background:#0f182b;color:var(--text);"></label>
+        <br>
+        <button class="btn" type="submit">Register</button>
+      </form>
+    </div>
+  </main>
+
+  <script src="assets/app.js"></script>
+  <script>
+    document.querySelectorAll('form').forEach(f => f.addEventListener('submit', async (e) => { e.preventDefault(); await handleAuth(f); }));
+  </script>
+</body>
+</html>

@@ -1,0 +1,416 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Shape Sorter</title>
+  <link rel="stylesheet" href="../assets/style.css" />
+  <link rel="stylesheet" href="../assets/immersive-game-styles.css" />
+  <style>
+    /* Countdown overlay */
+    .countdown-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.95);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10000;
+      animation: fadeIn 0.3s ease;
+    }
+    
+    .countdown-number {
+      font-size: 150px;
+      font-weight: 900;
+      color: #fff;
+      text-shadow: 0 0 40px rgba(168, 85, 247, 0.8), 0 0 80px rgba(168, 85, 247, 0.4);
+      animation: countdownPulse 0.8s ease;
+    }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    
+    @keyframes countdownPulse {
+      0% { transform: scale(0.5); opacity: 0; }
+      50% { transform: scale(1.2); opacity: 1; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    
+    /* Game window */
+    .game-window {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: #0a0f1e;
+      z-index: 9999;
+      display: none;
+      animation: slideIn 0.4s ease;
+    }
+    
+    .game-window.active {
+      display: flex;
+      flex-direction: column;
+    }
+    
+    @keyframes slideIn {
+      from { transform: translateY(100%); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="navbar">
+      <div class="brand"><span class="tag">Game</span><a href="../index.html">Focus Frontier</a> / Shape Sorter</div>
+      <div class="badges" id="user-chip"></div>
+    </div>
+  </header>
+  <main id="main-menu">
+    <div class="section-title"><h2>Shape Sorter</h2><div class="badges"><span class="badge">Processing Speed</span></div></div>
+    <div class="split">
+      <div class="panel">
+        <div class="stat-line"><span>Score</span><strong id="score">0</strong></div>
+        <div class="stat-line"><span>Time</span><strong id="time">∞</strong></div>
+        <div class="stat-line"><span>Spawn rate (ms)</span><strong id="rate">1800</strong></div>
+        <div class="stat-line"><span>Mode</span>
+          <select id="mode" aria-label="Mode" style="padding:6px 10px;border-radius:8px;background:#0f182b;color:var(--text);border:1px solid rgba(255,255,255,0.08)">
+            <option value="timed">Timed</option>
+            <option value="elimination">Elimination</option>
+          </select>
+        </div>
+        <div class="stat-line" id="time-row"><span>Time limit</span>
+          <select id="time-limit" aria-label="Time limit" style="padding:6px 10px;border-radius:8px;background:#0f182b;color:var(--text);border:1px solid rgba(255,255,255,0.08)">
+            <option value="30">30s</option>
+            <option value="60" selected>60s</option>
+            <option value="90">90s</option>
+            <option value="120">120s</option>
+            <option value="180">180s</option>
+          </select>
+        </div>
+        <div class="stat-line"><span>Difficulty</span>
+          <select id="difficulty" aria-label="Difficulty" style="padding:6px 10px;border-radius:8px;background:#0f182b;color:var(--text);border:1px solid rgba(255,255,255,0.08)">
+            <option value="beginner">Beginner</option>
+            <option value="intermediate">Intermediate</option>
+            <option value="advanced">Advanced</option>
+          </select>
+        </div>
+        <div style="display:flex; gap:10px; margin-top:14px;">
+          <button class="btn" id="start">Play</button>
+          <button class="btn secondary" onclick="window.location='/client/index.html'">Back to Hub</button>
+        </div>
+      </div>
+      <div class="game-stage" id="stage"></div>
+    </div>
+  </main>
+
+  <!-- Game Window -->
+  <div class="game-window" id="game-window">
+    <div style="padding: 20px; height: 100%; display: flex; flex-direction: column;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h2 style="margin: 0; color: #fff; font-size: 24px;">Shape Sorter</h2>
+        <div style="display: flex; gap: 20px; align-items: center;">
+          <div style="color: #fbbf24; font-weight: 600;">Score: <span id="game-score">0</span></div>
+          <div style="color: #38bdf8; font-weight: 600;">Caught: <span id="game-caught">0</span></div>
+          <div style="color: #a855f7; font-weight: 600;">Rate: <span id="game-rate">1800ms</span></div>
+          <div style="color: #10b981; font-weight: 600;">Time: <span id="game-time">∞</span></div>
+          <button class="btn secondary" id="quit-game">Quit</button>
+        </div>
+      </div>
+      <div id="game-stage" style="flex: 1; position: relative; overflow: hidden; background: linear-gradient(180deg, rgba(9,15,30,0.98), rgba(9,15,30,0.9)); border: 1px solid rgba(125, 211, 252, 0.15); box-shadow: inset 0 0 80px rgba(0,0,0,0.55); border-radius: 16px;"></div>
+    </div>
+  </div>
+
+
+
+  <script src="../assets/app.js"></script>
+  <script src="../assets/game-utils.js"></script>
+  <script src="../assets/ml-client.js"></script>
+  <script>
+    renderUserChip('#user-chip');
+    const stage = document.getElementById('stage');
+    const scoreEl = document.getElementById('score');
+    const rateEl = document.getElementById('rate');
+    const diffEl = document.getElementById('difficulty');
+    const modeEl = document.getElementById('mode');
+    const timeLimitEl = document.getElementById('time-limit');
+    const timeRow = document.getElementById('time-row');
+    const timeEl = document.getElementById('time');
+
+    // Game window elements
+    const gameWindow = document.getElementById('game-window');
+    const gameStage = document.getElementById('game-stage');
+    const gameScoreEl = document.getElementById('game-score');
+    const gameCaughtEl = document.getElementById('game-caught');
+    const gameRateEl = document.getElementById('game-rate');
+    const gameTimeEl = document.getElementById('game-time');
+    
+    const sound = new GameUtils.SoundManager();
+    const stats = new GameUtils.GameStats('shapeSorter');
+    const tracker = new GameUtils.PerformanceTracker();
+    const mlClient = new MLClient();
+
+    const shapes = ['circle','square','triangle'];
+    let sessionId = null;
+    let score = 0;
+    let missed = 0;
+    let caughtCount = 0;
+    let spawnRate = 1800;
+    let loop = null;
+    let paused = false;
+    let gameActive = false;
+    let totalTimer = null;
+    let ended = false;
+    
+    function showCountdown() {
+      return new Promise((resolve) => {
+        const overlay = document.createElement('div');
+        overlay.className = 'countdown-overlay';
+        document.body.appendChild(overlay);
+
+        let count = 3;
+        
+        function updateCountdown() {
+          overlay.innerHTML = `<div class="countdown-number">${count}</div>`;
+          sound.click();
+          
+          if (count > 1) {
+            count--;
+            setTimeout(updateCountdown, 1000);
+          } else {
+            setTimeout(() => {
+              overlay.innerHTML = '<div class="countdown-number" style="color: #a855f7;">GO!</div>';
+              sound.success();
+              setTimeout(() => {
+                overlay.remove();
+                resolve();
+              }, 800);
+            }, 1000);
+          }
+        }
+        
+        updateCountdown();
+      });
+    }
+    
+    function openGameWindow() {
+      gameWindow.classList.add('active');
+      document.getElementById('main-menu').style.display = 'none';
+    }
+    
+    function closeGameWindow() {
+      gameWindow.classList.remove('active');
+      document.getElementById('main-menu').style.display = 'block';
+      // Update main menu displays
+      scoreEl.textContent = score;
+      rateEl.textContent = spawnRate;
+    }
+
+    function shapeNode(type) {
+      const el = document.createElement('div');
+      el.dataset.shape = type;
+      el.style.position = 'absolute';
+      el.style.width = '54px';
+      el.style.height = '54px';
+      el.style.top = '0px';
+      el.style.left = Math.random() * (gameStage.clientWidth - 60) + 'px';
+      el.style.cursor = 'pointer';
+      
+      // Add larger clickable area with padding
+      el.style.padding = '10px';
+      el.style.margin = '-10px';
+      
+      if (type === 'circle') {
+        el.style.borderRadius = '50%';
+        el.style.background = '#f472b6';
+      } else if (type === 'triangle') {
+        // Create a wrapper for better triangle click detection
+        el.style.width = '56px';
+        el.style.height = '56px';
+        el.style.padding = '0';
+        el.style.margin = '0';
+        const triangle = document.createElement('div');
+        triangle.style.position = 'absolute';
+        triangle.style.top = '50%';
+        triangle.style.left = '50%';
+        triangle.style.transform = 'translate(-50%, -50%)';
+        triangle.style.width = '0';
+        triangle.style.height = '0';
+        triangle.style.borderLeft = '28px solid transparent';
+        triangle.style.borderRight = '28px solid transparent';
+        triangle.style.borderBottom = '56px solid #a855f7';
+        triangle.style.pointerEvents = 'none';
+        el.appendChild(triangle);
+        el.style.background = 'transparent';
+      } else {
+        el.style.background = '#38bdf8';
+      }
+      
+      return el;
+    }
+
+      function syncModeUI() {
+        const timed = modeEl.value === 'timed';
+        timeRow.style.display = timed ? 'flex' : 'none';
+        timeEl.textContent = timed ? timeLimitEl.value : '∞';
+      }
+
+      function startTotalTimer() {
+        clearInterval(totalTimer);
+        if (modeEl.value !== 'timed') {
+          gameTimeEl.textContent = '∞';
+          return;
+        }
+        let t = parseInt(timeLimitEl.value, 10);
+        gameTimeEl.textContent = t;
+        totalTimer = setInterval(() => {
+          if (paused || ended) return;
+          t -= 1;
+          gameTimeEl.textContent = t;
+          if (t <= 0) endGame('Time Up!');
+        }, 1000);
+      }
+
+    async function startGame() {
+      // Load ML difficulty recommendation
+      const mlRecommendation = await mlClient.getDifficultyRecommendation('shapeSorter');
+      if (mlRecommendation?.autoAdjust) {
+        diffEl.value = mlRecommendation.suggestedDifficulty;
+      }
+      if (mlRecommendation) {
+        mlClient.displayDifficultyWidget('difficulty-widget-shape', mlRecommendation);
+      }
+
+      // Show countdown
+      await showCountdown();
+      
+      // Open game window
+      openGameWindow();
+      
+      paused = false;
+      ended = false;
+      gameActive = true;
+      score = 0;
+      missed = 0;
+      caughtCount = 0;
+      gameScoreEl.textContent = '0';
+      gameCaughtEl.textContent = '0';
+      spawnRate = diffEl.value === 'advanced' ? 1200 : diffEl.value === 'intermediate' ? 1500 : 1800;
+      gameRateEl.textContent = spawnRate + 'ms';
+      gameStage.innerHTML = '';
+      sessionId = await startSession('shapeSorter', diffEl.value);
+      
+      if (loop) clearInterval(loop);
+      loop = setInterval(spawn, spawnRate);
+      startTotalTimer();
+      spawn();
+    }
+
+    function spawn() {
+      if (paused || !gameActive) return;
+      const type = shapes[Math.floor(Math.random() * shapes.length)];
+      const node = shapeNode(type);
+      gameStage.appendChild(node);
+      let y = 0;
+      const fall = setInterval(async () => {
+        if (paused || !gameActive || ended) {
+          clearInterval(fall);
+          return;
+        }
+        y += diffEl.value === 'advanced' ? 10 : diffEl.value === 'intermediate' ? 8 : 6;
+        node.style.transform = `translateY(${y}px)`;
+        if (y > gameStage.clientHeight - 70) {
+          clearInterval(fall);
+          node.remove();
+          
+          // Miss penalty
+          if (modeEl.value === 'elimination') {
+            await recordMetrics(sessionId, [{ name: 'miss', value: 1, skill: 'processing_speed', difficulty: diffEl.value }], false);
+            endGame('Missed shape - Eliminated');
+          } else {
+            // Timed mode: -2 points penalty
+            score = Math.max(0, score - 2);
+            gameScoreEl.textContent = score;
+            sound.error();
+            toast('Missed shape: -2 points', 'error');
+            await recordMetrics(sessionId, [{ name: 'miss', value: 1, skill: 'processing_speed', difficulty: diffEl.value }], false);
+          }
+        }
+      }, 80);
+      
+      node.addEventListener('click', async () => {
+        if (paused || !gameActive) return;
+        clearInterval(fall);
+        node.remove();
+        
+        // Award points: +5 per shape
+        score += 5;
+        caughtCount += 1;
+        gameScoreEl.textContent = score;
+        gameCaughtEl.textContent = caughtCount;
+        sound.success();
+        
+        await recordMetrics(sessionId, [{ name: 'score', value: score, skill: 'processing_speed', difficulty: diffEl.value }], false);
+        
+        // Speed up spawn rate
+        spawnRate = Math.max(900, spawnRate - 30);
+        gameRateEl.textContent = spawnRate + 'ms';
+        clearInterval(loop);
+        loop = setInterval(spawn, spawnRate);
+      });
+    }
+
+      async function endGame(message) {
+        if (ended) return;
+        ended = true;
+        gameActive = false;
+        clearInterval(loop);
+        clearInterval(totalTimer);
+        
+        await recordMetrics(sessionId, [{ name: 'score', value: score, skill: 'processing_speed', difficulty: diffEl.value }], true);
+        
+        // Send session data to ML for analysis
+        await mlClient.analyzeSessionComplete({
+          gameKey: 'shapeSorter',
+          duration: tracker.getTotalTime?.() || 0,
+          score: score,
+          metrics: [
+            { name: 'score', value: score },
+            { name: 'missed', value: missed },
+            { name: 'difficulty', value: diffEl.value }
+          ]
+        });
+        
+        toast(`${message}! Score: ${score}`, score > 50 ? 'success' : 'info');
+        
+        // Wait a moment then close game window
+        setTimeout(() => {
+          closeGameWindow();
+        }, 2000);
+      }
+
+    document.getElementById('start').addEventListener('click', startGame);
+    
+    document.getElementById('quit-game').addEventListener('click', async () => {
+      if (confirm('Are you sure you want to quit? Your progress will be saved.')) {
+        await endGame('Player quit');
+        closeGameWindow();
+      }
+    });
+    
+    modeEl.addEventListener('change', syncModeUI);
+    timeLimitEl.addEventListener('change', syncModeUI);
+    syncModeUI();
+    
+    window.addEventListener('beforeunload', () => {
+      if (sessionId) recordMetrics(sessionId, [{ name: 'score', value: score, skill: 'processing_speed', difficulty: diffEl.value }], true);
+    });
+  </script>
+</body>
+</html>

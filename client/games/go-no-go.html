@@ -1,0 +1,541 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Go/No-Go Task</title>
+  <link rel="stylesheet" href="../assets/style.css" />
+  <style>
+    /* Countdown overlay */
+    .countdown-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.95);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10000;
+      animation: fadeIn 0.3s ease;
+    }
+    
+    .countdown-number {
+      font-size: 150px;
+      font-weight: 900;
+      color: #fff;
+      text-shadow: 0 0 40px rgba(244, 63, 94, 0.8), 0 0 80px rgba(244, 63, 94, 0.4);
+      animation: countdownPulse 0.8s ease;
+    }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    
+    @keyframes countdownPulse {
+      0% { transform: scale(0.5); opacity: 0; }
+      50% { transform: scale(1.2); opacity: 1; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    
+    /* Game window */
+    .game-window {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: #0a0f1e;
+      z-index: 9999;
+      display: none;
+      animation: slideIn 0.4s ease;
+      flex-direction: column;
+      padding: 20px;
+    }
+    
+    .game-window.active {
+      display: flex;
+    }
+    
+    @keyframes slideIn {
+      from { transform: translateY(100%); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+    
+    .game-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      border-bottom: 1px solid rgba(244, 63, 94, 0.3);
+      padding-bottom: 15px;
+    }
+    
+    .game-header h2 {
+      margin: 0;
+      color: #fff;
+      font-size: 24px;
+    }
+    
+    .header-stats {
+      display: flex;
+      gap: 30px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    
+    .header-stat {
+      color: #cbd5e1;
+      font-weight: 600;
+    }
+    
+    .header-stat span {
+      color: #f43f5e;
+      font-size: 18px;
+      font-weight: 700;
+    }
+    
+    .game-container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 30px;
+    }
+    
+    .stimulus-display {
+      width: 240px;
+      height: 240px;
+      border-radius: 20px;
+      background: linear-gradient(135deg, rgba(244, 63, 94, 0.2), rgba(244, 63, 94, 0.1));
+      border: 3px solid rgba(244, 63, 94, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 100px;
+      font-weight: 800;
+      transition: all 0.1s ease;
+    }
+    
+    .stimulus-display.go-target {
+      border-color: #34d399;
+      box-shadow: 0 0 50px rgba(52, 211, 153, 0.6);
+      background: linear-gradient(135deg, rgba(52, 211, 153, 0.3), rgba(52, 211, 153, 0.1));
+    }
+    
+    .stimulus-display.no-go-target {
+      border-color: #f43f5e;
+      box-shadow: 0 0 50px rgba(244, 63, 94, 0.6);
+      background: linear-gradient(135deg, rgba(244, 63, 94, 0.3), rgba(244, 63, 94, 0.1));
+    }
+    
+    .stimulus-display.correct-response {
+      animation: pulse 0.4s ease;
+    }
+    
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(0.95); }
+    }
+    
+    .stats-row {
+      display: flex;
+      gap: 40px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    
+    .stat-item {
+      text-align: center;
+    }
+    
+    .stat-label {
+      color: #cbd5e1;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 4px;
+    }
+    
+    .stat-value {
+      color: #fff;
+      font-size: 24px;
+      font-weight: 700;
+    }
+    
+    .info-text {
+      color: #cbd5e1;
+      font-size: 14px;
+      text-align: center;
+      height: 24px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="navbar">
+      <div class="brand"><span class="tag">Clinical</span><a href="../index.html">Focus Frontier</a> / Go/No-Go</div>
+      <div class="badges" id="user-chip"></div>
+    </div>
+  </header>
+  <main id="main-menu">
+    <div class="section-title"><h2>Go/No-Go Task</h2><div class="badges"><span class="badge">Impulse Control</span><span class="badge">Inhibition</span><span class="badge" id="high-score">Best: 0</span></div></div>
+    <div class="split">
+      <div class="panel">
+        <div class="stat-line"><span>Duration</span><strong id="duration-display">60s</strong></div>
+        <div class="stat-line"><span>Accuracy</span><strong id="accuracy">0%</strong></div>
+        <div class="stat-line"><span>False Alarms</span><strong id="false-alarms">0</strong></div>
+        <div class="stat-line"><span>Mode</span>
+          <select id="mode" aria-label="Mode" style="padding:6px 10px;border-radius:8px;background:#0f182b;color:var(--text);border:1px solid rgba(255,255,255,0.08)">
+            <option value="easy" selected>Easy (80% GO)</option>
+            <option value="medium">Medium (70% GO)</option>
+            <option value="hard">Hard (60% GO)</option>
+          </select>
+        </div>
+        <div class="stat-line"><span>Stimulus Duration</span>
+          <select id="stimulus-time" aria-label="Stimulus Time" style="padding:6px 10px;border-radius:8px;background:#0f182b;color:var(--text);border:1px solid rgba(255,255,255,0.08)">
+            <option value="500">500ms</option>
+            <option value="1000" selected>1000ms</option>
+            <option value="1500">1500ms</option>
+          </select>
+        </div>
+        <div style="display:flex; gap:10px; margin-top:14px;">
+          <button class="btn" id="start">Play</button>
+          <button class="btn secondary" onclick="window.location='/client/index.html'">Back to Hub</button>
+        </div>
+      </div>
+      <div class="panel">
+        <h3 style="margin-top:0">How It Works</h3>
+        <p style="font-size: 13px; color: var(--muted); line-height: 1.6;"><strong>Green letter (GO):</strong> Press SPACE as fast as possible.</p>
+        <p style="font-size: 13px; color: var(--muted); line-height: 1.6;"><strong>Red letter (NO-GO):</strong> Do NOT respond—inhibit your impulse!</p>
+        <div style="background: rgba(244,63,94,0.1); padding: 12px; border-radius: 8px; margin-top: 12px; border-left: 3px solid #f43f5e;">
+          <strong style="color: #f43f5e;">⚡ Tip:</strong> <span style="color: var(--muted); font-size: 13px;">Speed + accuracy = success. False alarms (responding to NO-GO) hurt your score.</span>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Game Window -->
+  <div class="game-window" id="game-window">
+    <div class="game-header">
+      <h2>Go/No-Go Task</h2>
+      <div class="header-stats">
+        <div class="header-stat">Score: <span id="game-score">0</span></div>
+        <div class="header-stat">Accuracy: <span id="game-accuracy">0%</span></div>
+        <div class="header-stat">Time: <span id="game-timer">60s</span></div>
+        <button class="btn secondary" id="quit-game">Quit</button>
+      </div>
+    </div>
+    <div class="game-container">
+      <div class="stimulus-display" id="stimulus-display">-</div>
+      <div class="info-text" id="info-text"></div>
+      <div class="stats-row">
+        <div class="stat-item">
+          <div class="stat-label">Correct</div>
+          <div class="stat-value" id="stat-correct">0</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-label">Misses</div>
+          <div class="stat-value" id="stat-misses">0</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-label">False Alarms</div>
+          <div class="stat-value" id="stat-false-alarms">0</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-label">Avg RT (ms)</div>
+          <div class="stat-value" id="stat-rt">-</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="countdown-overlay" id="countdown-overlay" style="display: none;">
+    <div class="countdown-number" id="countdown-number">3</div>
+  </div>
+
+  <script src="../assets/app.js"></script>
+  <script src="../assets/game-utils.js"></script>
+  <script src="../assets/ml-client.js"></script>
+  <script>
+    renderUserChip('#user-chip');
+    
+    const modeEl = document.getElementById('mode');
+    const stimulusTimeEl = document.getElementById('stimulus-time');
+    const accuracyEl = document.getElementById('accuracy');
+    const falseAlarmsEl = document.getElementById('false-alarms');
+    const highScoreEl = document.getElementById('high-score');
+    
+    const gameWindow = document.getElementById('game-window');
+    const gameScoreEl = document.getElementById('game-score');
+    const gameAccuracyEl = document.getElementById('game-accuracy');
+    const gameTimerEl = document.getElementById('game-timer');
+    const stimulusDisplay = document.getElementById('stimulus-display');
+    const infoText = document.getElementById('info-text');
+    const statCorrect = document.getElementById('stat-correct');
+    const statMisses = document.getElementById('stat-misses');
+    const statFalseAlarms = document.getElementById('stat-false-alarms');
+    const statRt = document.getElementById('stat-rt');
+    const countdownOverlay = document.getElementById('countdown-overlay');
+    const countdownNumber = document.getElementById('countdown-number');
+    
+    const sound = new GameUtils.SoundManager();
+    const stats = new GameUtils.GameStats('goNoGo');
+    const tracker = new GameUtils.PerformanceTracker();
+    const mlClient = new MLClient();
+    
+    let sessionId = null;
+    let score = 0;
+    let correct = 0;
+    let misses = 0;
+    let falseAlarms = 0;
+    let reactionTimes = [];
+    let gameActive = false;
+    let gameTimer = null;
+    let ended = false;
+    let trialTime = 0;
+    let stimulusShown = false;
+    let isGoTrial = false;
+    
+    const letters = ['X', 'A', 'B', 'C', 'D', 'E', 'F'];
+    
+    highScoreEl.textContent = `Best: ${stats.stats.highScore || 0}`;
+    
+    function showCountdown() {
+      return new Promise((resolve) => {
+        countdownOverlay.style.display = 'flex';
+        let count = 3;
+        
+        function updateCountdown() {
+          countdownNumber.textContent = count;
+          sound.click();
+          
+          if (count > 1) {
+            count--;
+            setTimeout(updateCountdown, 1000);
+          } else {
+            setTimeout(() => {
+              countdownNumber.textContent = 'GO!';
+              countdownNumber.style.color = '#f43f5e';
+              sound.success();
+              setTimeout(() => {
+                countdownOverlay.style.display = 'none';
+                countdownNumber.style.color = '#fff';
+                resolve();
+              }, 800);
+            }, 1000);
+          }
+        }
+        
+        updateCountdown();
+      });
+    }
+    
+    function openGameWindow() {
+      gameWindow.classList.add('active');
+      document.querySelector('header').style.display = 'none';
+      document.querySelector('main').style.display = 'none';
+    }
+    
+    function closeGameWindow() {
+      gameWindow.classList.remove('active');
+      document.querySelector('header').style.display = 'block';
+      document.querySelector('main').style.display = 'block';
+    }
+    
+    function getGoPercentage() {
+      if (modeEl.value === 'easy') return 0.8;
+      if (modeEl.value === 'medium') return 0.7;
+      return 0.6;
+    }
+    
+    function generateTrial() {
+      const goProb = getGoPercentage();
+      isGoTrial = Math.random() < goProb;
+      const letter = letters[Math.floor(Math.random() * letters.length)];
+      
+      return {
+        letter,
+        isGo: isGoTrial,
+        responseWindow: parseInt(stimulusTimeEl.value)
+      };
+    }
+    
+    function updateDisplay() {
+      const acc = (correct + misses) > 0 ? Math.round((correct / (correct + misses)) * 100) : 0;
+      accuracyEl.textContent = acc + '%';
+      falseAlarmsEl.textContent = falseAlarms;
+      gameAccuracyEl.textContent = acc + '%';
+      
+      statCorrect.textContent = correct;
+      statMisses.textContent = misses;
+      statFalseAlarms.textContent = falseAlarms;
+      
+      const avgRt = reactionTimes.length > 0 
+        ? Math.round(reactionTimes.reduce((a, b) => a + b) / reactionTimes.length)
+        : '-';
+      statRt.textContent = avgRt;
+    }
+    
+    async function presentTrial() {
+      const trial = generateTrial();
+      
+      stimulusDisplay.textContent = trial.letter;
+      stimulusDisplay.classList.remove('go-target', 'no-go-target');
+      stimulusDisplay.classList.add(trial.isGo ? 'go-target' : 'no-go-target');
+      
+      infoText.textContent = trial.isGo ? '🟢 GO!' : '🔴 NO-GO!';
+      stimulusShown = true;
+      trialTime = Date.now();
+      
+      // Wait for response window
+      await new Promise(r => setTimeout(r, trial.responseWindow));
+      
+      // Check for miss (GO without response)
+      if (trial.isGo && reactionTimes.length <= correct + misses) {
+        misses++;
+        sound.error();
+      }
+      
+      stimulusDisplay.classList.remove('go-target', 'no-go-target');
+      stimulusDisplay.textContent = '-';
+      stimulusShown = false;
+      infoText.textContent = '';
+      
+      updateDisplay();
+      await new Promise(r => setTimeout(r, 500));
+    }
+    
+    document.addEventListener('keydown', (e) => {
+      if (e.code === 'Space' && gameActive && stimulusShown) {
+        e.preventDefault();
+        
+        const rt = Date.now() - trialTime;
+        
+        if (isGoTrial) {
+          // Correct GO response
+          correct++;
+          reactionTimes.push(rt);
+          score += 10;
+          sound.success();
+          stimulusDisplay.classList.add('correct-response');
+        } else {
+          // False alarm (NO-GO response)
+          falseAlarms++;
+          score = Math.max(0, score - 5);
+          sound.error();
+        }
+        
+        gameScoreEl.textContent = score;
+        updateDisplay();
+        stimulusShown = false;
+      }
+    });
+    
+    async function startGame() {
+      // Load ML recommendation
+      const mlRecommendation = await mlClient.getDifficultyRecommendation('goNoGo');
+      if (mlRecommendation?.autoAdjust) {
+        const diffMap = { 'beginner': 'easy', 'intermediate': 'medium', 'advanced': 'hard' };
+        modeEl.value = diffMap[mlRecommendation.suggestedDifficulty] || 'easy';
+      }
+      if (mlRecommendation) {
+        mlClient.displayDifficultyWidget('difficulty-widget-gong', mlRecommendation);
+      }
+      
+      // Reset
+      gameActive = false;
+      ended = false;
+      score = 0;
+      correct = 0;
+      misses = 0;
+      falseAlarms = 0;
+      reactionTimes = [];
+      
+      const duration = 60;
+      sessionId = await startSession('goNoGo', modeEl.value);
+      tracker.track('game_started');
+      updateDisplay();
+      
+      // Show countdown
+      await showCountdown();
+      openGameWindow();
+      gameActive = true;
+      
+      // Start timer
+      let timeLeft = duration;
+      gameTimerEl.textContent = timeLeft + 's';
+      gameTimer = setInterval(() => {
+        timeLeft--;
+        gameTimerEl.textContent = timeLeft + 's';
+        if (timeLeft <= 0) {
+          clearInterval(gameTimer);
+          endGame();
+        }
+      }, 1000);
+      
+      // Run trials
+      while (gameActive && !ended) {
+        await presentTrial();
+      }
+    }
+    
+    async function endGame() {
+      if (ended) return;
+      ended = true;
+      gameActive = false;
+      clearInterval(gameTimer);
+      
+      const accuracy = (correct + misses) > 0 ? Math.round((correct / (correct + misses)) * 100) : 0;
+      
+      await recordMetrics(sessionId, [{
+        name: 'score',
+        value: score,
+        skill: 'inhibition',
+        difficulty: modeEl.value
+      }], true);
+      
+      // Send to ML
+      await mlClient.analyzeSessionComplete({
+        gameKey: 'goNoGo',
+        duration: 60,
+        score: score,
+        metrics: [
+          { name: 'score', value: score },
+          { name: 'accuracy', value: accuracy },
+          { name: 'false_alarms', value: falseAlarms },
+          { name: 'difficulty', value: modeEl.value }
+        ]
+      });
+      
+      const isHighScore = score > (stats.stats.highScore || 0);
+      if (isHighScore) {
+        stats.stats.highScore = score;
+        stats.save();
+        highScoreEl.textContent = `Best: ${score}`;
+        sound.win();
+        toast(`🏆 New High Score: ${score}!`, 'success');
+      }
+      
+      toast(`Game Over! Score: ${score}`, 'error');
+      sound.error();
+      
+      setTimeout(() => {
+        closeGameWindow();
+      }, 2000);
+    }
+    
+    document.getElementById('start').addEventListener('click', startGame);
+    
+    document.getElementById('quit-game').addEventListener('click', async () => {
+      if (confirm('Quit game? Progress will be saved.')) {
+        await endGame();
+        closeGameWindow();
+      }
+    });
+  </script>
+</body>
+</html>
