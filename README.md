@@ -4,7 +4,7 @@
 ![Stack](https://img.shields.io/badge/Stack-MERN-blue?logo=react)
 ![License](https://img.shields.io/badge/License-MIT-green)
 
-**Focus Frontier** is a comprehensive, neurodiversity-first cognitive training platform. It features a suite of **9 professionally designed mini-games** split into cognitive training and clinical assessment modules. Built with the **MERN stack** (MongoDB, Express, React-style Vanilla JS, Node.js), it includes full authentication, real-time analytics, ML-driven difficulty adaptation, and session tracking.
+**Focus Frontier** is a comprehensive, neurodiversity-first cognitive training game platform. It features a suite of **9 professionally designed mini-games** split into cognitive training and clinical assessment modules. Built with the **MERN stack** (MongoDB, Express, React-style Vanilla JS, Node.js), it includes full authentication, real-time analytics, ML-driven difficulty adaptation, and session tracking.
 
 ## ✨ Key Features
 
