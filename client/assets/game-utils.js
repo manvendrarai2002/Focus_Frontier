@@ -241,6 +241,10 @@ class PerformanceTracker {
     });
   }
 
+  getTotalTime() {
+    return Date.now() - this.startTime;
+  }
+
   getMetrics() {
     return {
       duration: Date.now() - this.startTime,

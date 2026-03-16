@@ -200,7 +200,7 @@ class PerformanceAnalyzer {
       skillImprovements: skillGaps.improvements,
       primaryFocus: skillGaps.primaryFocus,
       recommendations: [
-        `Current performance: ${(trendAnalysis.averageScore).toFixed(0)} avg`,
+        `Current performance: ${(trendAnalysis.averageScore ?? 0).toFixed(0)} avg`,
         `Trend: ${trendAnalysis.analysis}`,
         `Next steps: ${skillGaps.summary}`,
         skillGaps.improvements.length > 0 

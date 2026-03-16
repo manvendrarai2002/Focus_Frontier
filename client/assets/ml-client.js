@@ -14,7 +14,7 @@ class MLClient {
     try {
       const response = await fetch(`${this.apiBase}/difficulty/${gameKey}`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
         }
       });
 
@@ -35,7 +35,7 @@ class MLClient {
     try {
       const response = await fetch(`${this.apiBase}/config/${gameKey}`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
         }
       });
 
@@ -58,7 +58,7 @@ class MLClient {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
         },
         body: JSON.stringify(sessionData)
       });
@@ -80,7 +80,7 @@ class MLClient {
     try {
       const response = await fetch(`${this.apiBase}/improvement-report/${gameKey}`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
         }
       });
 
@@ -101,7 +101,7 @@ class MLClient {
     try {
       const response = await fetch(`${this.apiBase}/dashboard`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
         }
       });
 
@@ -236,5 +236,4 @@ class MLClient {
   }
 }
 
-// Export as global object
-window.MLClient = new MLClient();
+// MLClient class is available globally - each game creates its own instance via new MLClient()

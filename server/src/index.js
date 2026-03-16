@@ -1,12 +1,7 @@
 import dotenv from 'dotenv';
-import mongoose from 'mongoose';
-import authRoutes from './routes/auth.js';
-import gameRoutes from './routes/games.js';
-import sessionRoutes from './routes/sessions.js';
-import analyticsRoutes from './routes/analytics.js';
-
 dotenv.config();
 
+import mongoose from 'mongoose';
 import app from './app.js';
 
 const PORT = process.env.PORT || 4000;

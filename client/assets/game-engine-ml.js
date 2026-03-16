@@ -358,7 +358,7 @@ class GameEngine {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('token')}`
+        'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
       },
       body: JSON.stringify({
         gameKey: this.gameKey,
@@ -466,7 +466,7 @@ class GameEngine {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('token')}`
+        'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
       },
       body: JSON.stringify({
         endedAt: new Date(),
@@ -570,7 +570,7 @@ class GameEngine {
     });
 
     document.getElementById('back-home')?.addEventListener('click', () => {
-      window.location.href = '/client/index.html';
+      window.location.href = '../index.html';
     });
   }
 
