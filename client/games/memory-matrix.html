@@ -238,6 +238,7 @@
     let gridSize = 4;
     let totalTimer = null;
     let ended = false;
+    let showingSequence = false;
     let patternLength = 1;
     let repeatsAtCurrentLength = 0;
 
@@ -335,9 +336,9 @@
     function adjustByDifficulty() {
       if (modeEl.value === 'elimination') {
         lives = 1;
-      } else if (diffEl.value === 'advanced') { lives = 2; }
-      else if (diffEl.value === 'intermediate') { lives = 3; }
-      else { lives = 4; }
+      } else if (diffEl.value === 'advanced') { lives = 3; }
+      else if (diffEl.value === 'intermediate') { lives = 4; }
+      else { lives = 5; }
       speedEl.textContent = diffEl.value === 'advanced' ? '1.35x' : diffEl.value === 'intermediate' ? '1.15x' : '1.0x';
       livesEl.textContent = lives;
       gameLivesEl.textContent = lives;
@@ -431,7 +432,9 @@
       }
       
       player = [];
+      showingSequence = true;
       await playSequence();
+      showingSequence = false;
       sound.click();
     }
 
@@ -456,7 +459,7 @@
     }
 
     async function handleClick(idx, tile) {
-      if (paused || !sequence.length || player.length >= sequence.length) return;
+      if (paused || showingSequence || !sequence.length || player.length >= sequence.length) return;
       
       player.push(idx);
       tile.style.background = '#34d399';
@@ -504,10 +507,12 @@
             return endGame('Out of lives');
           }
           
-          // Show remaining sequence after error
-          await delay(500);
-          await playSequence();
+          // Reset player and replay the same pattern
           player = [];
+          await delay(500);
+          showingSequence = true;
+          await playSequence();
+          showingSequence = false;
         }
       }
       
@@ -539,9 +544,10 @@
       }
     }
 
-    async function endGame(message) {
+    async function endGame(message, immediate = false) {
       if (ended) return;
       ended = true;
+      showingSequence = false;
       clearInterval(totalTimer);
       const isHighScore = stats.update(score, streak);
       if (isHighScore && score > 0) {
@@ -569,10 +575,13 @@
         ]
       });
       
-      // Wait a moment then close game window
-      setTimeout(() => {
+      if (immediate) {
         closeGameWindow();
-      }, 2000);
+      } else {
+        setTimeout(() => {
+          closeGameWindow();
+        }, 2000);
+      }
     }
 
     function showHighScoreBanner(finalScore) {
@@ -591,8 +600,7 @@
     
     document.getElementById('quit-game').addEventListener('click', async () => {
       if (confirm('Are you sure you want to quit? Your progress will be saved.')) {
-        await endGame('Player quit');
-        closeGameWindow();
+        await endGame('Player quit', true);
       }
     });
     

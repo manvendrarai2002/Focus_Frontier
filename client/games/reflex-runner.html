@@ -368,11 +368,12 @@
       raf = requestAnimationFrame(tick);
     }
 
-    async function endGame(reason) {
+    async function endGame(reason, immediate = false) {
       if (ended) return;
       ended = true;
       gameActive = false;
       clearInterval(totalTimer);
+      if (raf) cancelAnimationFrame(raf);
       sound.error();
       GameUtils.VisualFeedback.shake(gameStage, 10);
       const isHighScore = stats.update(score, streak);
@@ -396,10 +397,13 @@
         ]
       });
       
-      // Wait a moment then close game window
-      setTimeout(() => {
+      if (immediate) {
         closeGameWindow();
-      }, 2000);
+      } else {
+        setTimeout(() => {
+          closeGameWindow();
+        }, 2000);
+      }
     }
 
     function doJump() {
@@ -444,8 +448,7 @@
 
     document.getElementById('quit-game').addEventListener('click', async () => {
       if (confirm('Are you sure you want to quit? Your progress will be saved.')) {
-        await endGame('Player quit');
-        closeGameWindow();
+        await endGame('Player quit', true);
       }
     });
     

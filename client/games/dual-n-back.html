@@ -484,7 +484,7 @@
       await playSequence();
     }
     
-    async function endGame() {
+    async function endGame(immediate = false) {
       if (ended) return;
       ended = true;
       gameActive = false;
@@ -531,17 +531,20 @@
       
       toast(`Session Complete! Accuracy: ${accuracy}%`, 'info');
       
-      setTimeout(() => {
+      if (immediate) {
         closeGameWindow();
-      }, 2000);
+      } else {
+        setTimeout(() => {
+          closeGameWindow();
+        }, 2000);
+      }
     }
     
     document.getElementById('start').addEventListener('click', startGame);
     
     document.getElementById('quit-game').addEventListener('click', async () => {
       if (confirm('Quit game? Progress will be saved.')) {
-        await endGame();
-        closeGameWindow();
+        await endGame(true);
       }
     });
     

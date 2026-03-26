@@ -366,7 +366,7 @@
       });
     }
 
-      async function endGame(message) {
+      async function endGame(message, immediate = false) {
         if (ended) return;
         ended = true;
         gameActive = false;
@@ -389,18 +389,20 @@
         
         toast(`${message}! Score: ${score}`, score > 50 ? 'success' : 'info');
         
-        // Wait a moment then close game window
-        setTimeout(() => {
+        if (immediate) {
           closeGameWindow();
-        }, 2000);
+        } else {
+          setTimeout(() => {
+            closeGameWindow();
+          }, 2000);
+        }
       }
 
     document.getElementById('start').addEventListener('click', startGame);
     
     document.getElementById('quit-game').addEventListener('click', async () => {
       if (confirm('Are you sure you want to quit? Your progress will be saved.')) {
-        await endGame('Player quit');
-        closeGameWindow();
+        await endGame('Player quit', true);
       }
     });
     

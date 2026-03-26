@@ -631,7 +631,7 @@
       gameTimer = setInterval(updateTimer, 100);
     }
     
-    async function endGame() {
+    async function endGame(immediate = false) {
       if (ended) return;
       ended = true;
       clearInterval(gameTimer);
@@ -682,9 +682,13 @@
       toast(`Complete! Score: ${score}, Errors: ${errors}`, 'info');
       sound.click();
       
-      setTimeout(() => {
+      if (immediate) {
         closeGameWindow();
-      }, 2000);
+      } else {
+        setTimeout(() => {
+          closeGameWindow();
+        }, 2000);
+      }
     }
     
     document.getElementById('start').addEventListener('click', startGame);
@@ -693,10 +697,12 @@
       if (confirm('Quit game? Progress will be saved.')) {
         gameActive = false;
         clearInterval(gameTimer);
+        clearInterval(hitTimer);
         if (!ended && startTime) {
-          await endGame();
+          await endGame(true);
+        } else {
+          closeGameWindow();
         }
-        closeGameWindow();
       }
     });
   </script>
