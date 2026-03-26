@@ -90,12 +90,14 @@ export function setupMultiplayer(io) {
       }
 
       room.game = data.game;
+      room.settings = data.settings || {};
       room.seed = generateSeed();
       room.status = 'ready';
 
       io.to(socket.roomCode).emit('game_selected', {
         game: room.game,
-        seed: room.seed
+        seed: room.seed,
+        settings: room.settings
       });
 
       callback?.({ success: true });

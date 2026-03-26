@@ -84,9 +84,9 @@ class MultiplayerClient {
     });
   }
 
-  selectGame(game) {
+  selectGame(game, settings = {}) {
     return new Promise((resolve) => {
-      this.socket.emit('select_game', { game }, (response) => {
+      this.socket.emit('select_game', { game, settings }, (response) => {
         resolve(response);
       });
     });
