@@ -13,7 +13,7 @@ router.post('/register', async (req, res) => {
   const passwordHash = await bcrypt.hash(password, 10);
   const user = await User.create({ email, passwordHash, displayName });
   const token = jwt.sign({ id: user._id, email, role: user.role }, process.env.JWT_SECRET || 'dev-secret', { expiresIn: '7d' });
-  res.json({ token, user: { id: user._id, email: user.email, displayName: user.displayName } });
+  res.json({ token, user: { id: user._id, email: user.email, displayName: user.displayName, preferences: user.preferences } });
 });
 
 router.post('/login', async (req, res) => {
@@ -23,7 +23,7 @@ router.post('/login', async (req, res) => {
   const ok = await bcrypt.compare(password, user.passwordHash);
   if (!ok) return res.status(401).json({ error: 'invalid credentials' });
   const token = jwt.sign({ id: user._id, email, role: user.role }, process.env.JWT_SECRET || 'dev-secret', { expiresIn: '7d' });
-  res.json({ token, user: { id: user._id, email: user.email, displayName: user.displayName } });
+  res.json({ token, user: { id: user._id, email: user.email, displayName: user.displayName, preferences: user.preferences } });
 });
 
 router.put('/preferences', async (req, res) => {
@@ -34,6 +34,19 @@ router.put('/preferences', async (req, res) => {
     const prefs = req.body?.preferences || {};
     const user = await User.findByIdAndUpdate(decoded.id, { $set: { preferences: prefs } }, { new: true });
     res.json({ ok: true, preferences: user.preferences });
+  } catch (e) {
+    res.status(401).json({ error: 'unauthorized' });
+  }
+});
+
+router.get('/preferences', async (req, res) => {
+  try {
+    const header = req.headers.authorization || '';
+    const token = header.startsWith('Bearer ') ? header.slice(7) : null;
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'dev-secret');
+    const user = await User.findById(decoded.id).select('preferences');
+    if (!user) return res.status(404).json({ error: 'user not found' });
+    res.json({ preferences: user.preferences });
   } catch (e) {
     res.status(401).json({ error: 'unauthorized' });
   }

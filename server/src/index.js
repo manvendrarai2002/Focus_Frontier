@@ -31,6 +31,17 @@ async function start() {
   // Setup multiplayer handlers
   setupMultiplayer(io);
 
+  import('./models/Match.js').then(({ default: Match }) => {
+    app.get('/api/multiplayer/history', async (req, res) => {
+      try {
+        const matches = await Match.find().sort({ timestamp: -1 }).limit(20);
+        res.json(matches);
+      } catch (err) {
+        res.status(500).json({ error: 'Failed to fetch match history' });
+      }
+    });
+  });
+
   server.listen(PORT, () => console.log(`[api] listening on :${PORT}`));
 }
 

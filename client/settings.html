@@ -1,0 +1,447 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Settings · Focus Frontier</title>
+  <meta name="description" content="Accessibility and user preference settings for Focus Frontier cognitive training platform." />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/style.css" />
+  <style>
+    .settings-container {
+      max-width: 640px;
+      margin: 0 auto;
+    }
+
+    .settings-hero {
+      text-align: center;
+      margin-bottom: 36px;
+      animation: fadeIn 0.6s ease;
+    }
+
+    .settings-hero h1 {
+      font-size: 34px;
+      margin: 0 0 8px;
+      background: linear-gradient(135deg, #7dd3fc, #a855f7);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .settings-hero p {
+      color: var(--muted);
+      margin: 0;
+      font-size: 15px;
+    }
+
+    .settings-card {
+      background: linear-gradient(135deg, rgba(125,211,252,0.06), rgba(168,85,247,0.06)), var(--panel);
+      border-radius: 20px;
+      border: var(--border);
+      box-shadow: var(--shadow);
+      padding: 0;
+      overflow: hidden;
+      animation: fadeIn 0.7s ease backwards;
+    }
+
+    .settings-card + .settings-card {
+      margin-top: 18px;
+    }
+
+    .settings-section {
+      padding: 28px 28px 24px;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+
+    .settings-section:last-child {
+      border-bottom: none;
+    }
+
+    .settings-section-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 8px;
+    }
+
+    .settings-section-header .icon {
+      width: 42px;
+      height: 42px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 12px;
+      font-size: 20px;
+      flex-shrink: 0;
+    }
+
+    .settings-section-header .icon.contrast {
+      background: linear-gradient(135deg, rgba(56,189,248,0.2), rgba(56,189,248,0.08));
+      border: 1px solid rgba(56,189,248,0.3);
+    }
+
+    .settings-section-header .icon.font {
+      background: linear-gradient(135deg, rgba(168,85,247,0.2), rgba(168,85,247,0.08));
+      border: 1px solid rgba(168,85,247,0.3);
+    }
+
+    .settings-section-header .icon.motion {
+      background: linear-gradient(135deg, rgba(52,211,153,0.2), rgba(52,211,153,0.08));
+      border: 1px solid rgba(52,211,153,0.3);
+    }
+
+    .settings-section h3 {
+      margin: 0;
+      font-size: 17px;
+      font-weight: 700;
+    }
+
+    .settings-section .desc {
+      color: var(--muted);
+      font-size: 13px;
+      margin: 0;
+      line-height: 1.5;
+    }
+
+    .setting-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-top: 18px;
+    }
+
+    .setting-label {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    /* Toggle switch */
+    .toggle-switch {
+      position: relative;
+      width: 52px;
+      height: 28px;
+      flex-shrink: 0;
+    }
+
+    .toggle-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .toggle-slider {
+      position: absolute;
+      cursor: pointer;
+      inset: 0;
+      background: rgba(255,255,255,0.1);
+      border-radius: 28px;
+      border: 1px solid rgba(255,255,255,0.12);
+      transition: background 0.25s ease, border-color 0.25s ease;
+    }
+
+    .toggle-slider::before {
+      content: '';
+      position: absolute;
+      width: 22px;
+      height: 22px;
+      left: 3px;
+      bottom: 2px;
+      background: #fff;
+      border-radius: 50%;
+      transition: transform 0.25s ease;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+    }
+
+    .toggle-switch input:checked + .toggle-slider {
+      background: linear-gradient(135deg, #38bdf8, #7dd3fc);
+      border-color: rgba(56,189,248,0.5);
+    }
+
+    .toggle-switch input:checked + .toggle-slider::before {
+      transform: translateX(23px);
+    }
+
+    .toggle-switch input:focus-visible + .toggle-slider {
+      outline: 2px solid var(--primary);
+      outline-offset: 2px;
+    }
+
+    /* Font scale selector */
+    .font-scale-group {
+      display: flex;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+
+    .font-scale-btn {
+      padding: 8px 16px;
+      border-radius: 10px;
+      border: 1px solid rgba(255,255,255,0.1);
+      background: rgba(255,255,255,0.04);
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      min-width: 52px;
+      text-align: center;
+      font-family: 'Inter', sans-serif;
+    }
+
+    .font-scale-btn:hover {
+      background: rgba(255,255,255,0.08);
+      border-color: rgba(255,255,255,0.2);
+      color: var(--text);
+    }
+
+    .font-scale-btn.active {
+      background: linear-gradient(135deg, rgba(168,85,247,0.3), rgba(168,85,247,0.15));
+      border-color: rgba(168,85,247,0.6);
+      color: #fff;
+      box-shadow: 0 4px 16px rgba(168,85,247,0.3);
+    }
+
+    /* Saved indicator */
+    .save-indicator {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 14px;
+      color: var(--success);
+      font-size: 13px;
+      font-weight: 600;
+      opacity: 0;
+      transform: translateY(8px);
+      transition: opacity 0.3s ease, transform 0.3s ease;
+    }
+
+    .save-indicator.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* Preview panel */
+    .preview-panel {
+      margin-top: 24px;
+      animation: fadeIn 0.8s ease backwards;
+      animation-delay: 0.2s;
+    }
+
+    .preview-panel h3 {
+      font-size: 16px;
+      margin: 0 0 12px;
+      color: var(--muted);
+    }
+
+    .preview-box {
+      background: var(--card);
+      border-radius: var(--radius);
+      border: var(--border);
+      padding: 20px;
+      box-shadow: var(--shadow);
+    }
+
+    .preview-box p {
+      margin: 0 0 8px;
+      line-height: 1.6;
+    }
+
+    .preview-box .sample-btn {
+      display: inline-block;
+      padding: 8px 16px;
+      border-radius: 10px;
+      background: var(--primary);
+      color: #0b1220;
+      font-weight: 600;
+      font-size: 13px;
+      border: none;
+      cursor: pointer;
+    }
+
+    /* Guest notice */
+    .guest-notice {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 14px 18px;
+      background: rgba(251,191,36,0.08);
+      border: 1px solid rgba(251,191,36,0.25);
+      border-radius: 14px;
+      margin-bottom: 24px;
+      font-size: 13px;
+      color: var(--warning);
+      animation: fadeIn 0.5s ease;
+    }
+
+    .guest-notice a {
+      color: var(--warning);
+      text-decoration: underline;
+      font-weight: 600;
+    }
+
+    @media (max-width: 640px) {
+      .settings-section { padding: 20px 18px 18px; }
+      .settings-hero h1 { font-size: 26px; }
+      .font-scale-group { gap: 4px; }
+      .font-scale-btn { padding: 6px 12px; font-size: 13px; min-width: 44px; }
+      .setting-row { flex-wrap: wrap; gap: 10px; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="navbar">
+      <div class="brand"><span class="tag">Settings</span><a href="index.html">Focus Frontier</a></div>
+      <div class="badges" id="user-chip"></div>
+    </div>
+  </header>
+
+  <main>
+    <div class="settings-container">
+      <div class="settings-hero">
+        <h1>Accessibility & Preferences</h1>
+        <p>Personalize your experience. Changes apply instantly across all pages.</p>
+      </div>
+
+      <div id="guest-notice" class="guest-notice" style="display:none;">
+        ⚠️ <span>You're not signed in. Preferences will only be saved locally. <a href="auth.html">Login</a> to sync across devices.</span>
+      </div>
+
+      <div class="settings-card">
+        <!-- High Contrast -->
+        <div class="settings-section">
+          <div class="settings-section-header">
+            <div class="icon contrast">🔲</div>
+            <div>
+              <h3>High Contrast Mode</h3>
+              <p class="desc">Increases contrast ratios and border visibility for better readability.</p>
+            </div>
+          </div>
+          <div class="setting-row">
+            <span class="setting-label">Enable high contrast</span>
+            <label class="toggle-switch" id="toggle-contrast">
+              <input type="checkbox" id="pref-high-contrast" aria-label="Toggle high contrast mode">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Font Scale -->
+        <div class="settings-section">
+          <div class="settings-section-header">
+            <div class="icon font">🔤</div>
+            <div>
+              <h3>Font Scaling</h3>
+              <p class="desc">Adjust the base font size across the entire platform for improved legibility.</p>
+            </div>
+          </div>
+          <div class="setting-row">
+            <span class="setting-label">Text size</span>
+            <div class="font-scale-group" id="font-scale-group">
+              <button class="font-scale-btn" data-scale="1" aria-label="Normal font size">1×</button>
+              <button class="font-scale-btn" data-scale="1.25" aria-label="Large font size">1.25×</button>
+              <button class="font-scale-btn" data-scale="1.5" aria-label="Extra large font size">1.5×</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Reduced Motion -->
+        <div class="settings-section">
+          <div class="settings-section-header">
+            <div class="icon motion">✨</div>
+            <div>
+              <h3>Reduced Motion</h3>
+              <p class="desc">Minimizes animations and transitions to reduce visual distraction and motion sensitivity.</p>
+            </div>
+          </div>
+          <div class="setting-row">
+            <span class="setting-label">Reduce animations</span>
+            <label class="toggle-switch" id="toggle-motion">
+              <input type="checkbox" id="pref-reduced-motion" aria-label="Toggle reduced motion">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <div class="save-indicator" id="save-indicator">
+        ✓ Preferences saved
+      </div>
+
+      <!-- Live preview -->
+      <div class="preview-panel">
+        <h3>Live Preview</h3>
+        <div class="preview-box">
+          <p>This is a sample paragraph showing how your current accessibility settings affect content readability and layout across Focus Frontier.</p>
+          <button class="sample-btn" onclick="toast('Preview interaction!')">Sample Button</button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <div class="footer">© 2026 Focus Frontier · Neurodiversity-first training</div>
+
+  <script src="assets/app.js"></script>
+  <script>
+    renderUserChip('#user-chip');
+
+    // Show guest notice if not logged in
+    if (!localStorage.getItem('auth_token')) {
+      document.getElementById('guest-notice').style.display = 'flex';
+    }
+
+    const hcToggle = document.getElementById('pref-high-contrast');
+    const rmToggle = document.getElementById('pref-reduced-motion');
+    const scaleBtns = document.querySelectorAll('.font-scale-btn');
+    const saveEl = document.getElementById('save-indicator');
+
+    let saveTimer;
+    function flashSaved() {
+      saveEl.classList.add('visible');
+      clearTimeout(saveTimer);
+      saveTimer = setTimeout(() => saveEl.classList.remove('visible'), 2000);
+    }
+
+    // Initialize controls from current prefs
+    function syncControlsToPrefs() {
+      const p = _currentPrefs();
+      hcToggle.checked = !!p.highContrast;
+      rmToggle.checked = !!p.reducedMotion;
+      const scale = p.fontScale || 1;
+      scaleBtns.forEach(btn => {
+        btn.classList.toggle('active', parseFloat(btn.dataset.scale) === scale);
+      });
+    }
+
+    syncControlsToPrefs();
+
+    // High contrast toggle
+    hcToggle.addEventListener('change', () => {
+      savePrefsToServer({ highContrast: hcToggle.checked });
+      flashSaved();
+    });
+
+    // Reduced motion toggle
+    rmToggle.addEventListener('change', () => {
+      savePrefsToServer({ reducedMotion: rmToggle.checked });
+      flashSaved();
+    });
+
+    // Font scale buttons
+    scaleBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const scale = parseFloat(btn.dataset.scale);
+        scaleBtns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        savePrefsToServer({ fontScale: scale });
+        flashSaved();
+      });
+    });
+  </script>
+</body>
+</html>

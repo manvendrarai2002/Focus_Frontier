@@ -358,6 +358,17 @@ header {
   --border: 1px solid rgba(255,255,255,0.3);
 }
 
+/* Reduced motion mode */
+.reduced-motion,
+.reduced-motion *,
+.reduced-motion *::before,
+.reduced-motion *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+  scroll-behavior: auto !important;
+}
+
 /* Loading spinner */
 .spinner {
   border: 3px solid rgba(255,255,255,0.1);

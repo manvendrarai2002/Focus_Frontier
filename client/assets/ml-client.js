@@ -3,8 +3,14 @@
  */
 
 class MLClient {
-  constructor(apiBase = '/api/ml') {
-    this.apiBase = apiBase;
+  constructor(apiBase = null) {
+    const configuredApiBase =
+      typeof API_BASE === 'string' && API_BASE.trim()
+        ? API_BASE.trim()
+        : (localStorage.getItem('api_base') || 'http://localhost:4000/api');
+
+    const normalizedApiBase = configuredApiBase.replace(/\/+$/, '');
+    this.apiBase = (apiBase || `${normalizedApiBase}/ml`).replace(/\/+$/, '');
   }
 
   /**

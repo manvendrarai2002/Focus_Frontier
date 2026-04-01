@@ -16,6 +16,23 @@
   const params = new URLSearchParams(window.location.search);
   if (params.get('mp') !== '1') return;
 
+  const seedParam = parseInt(params.get('seed') || '0');
+  if (seedParam) {
+    let currentSeed = seedParam;
+    Math.random = function() {
+      currentSeed = (currentSeed * 9301 + 49297) % 233280;
+      return currentSeed / 233280;
+    };
+  }
+
+  function getSocketUrl() {
+    const configuredApiBase =
+      typeof API_BASE === 'string' && API_BASE.trim()
+        ? API_BASE.trim()
+        : (localStorage.getItem('api_base') || 'http://localhost:4000/api');
+    return configuredApiBase.replace(/\/api\/?$/, '');
+  }
+
   const roomCode = params.get('room');
   const role = params.get('role');
   const seed = parseInt(params.get('seed') || '0');
@@ -65,24 +82,64 @@
     }
   }
 
-  // Auto-click the start button after settings are applied
-  function autoStart() {
-    setTimeout(() => {
-      const startBtn = document.getElementById('start');
-      if (startBtn) startBtn.click();
-    }, 800);
+  // Setup the Ready button logic
+  function setupReadyButton(socket) {
+    const originalStart = document.getElementById('start');
+    if (!originalStart) return;
+
+    const readyBtn = originalStart.cloneNode(true);
+    readyBtn.id = 'mp-ready-btn';
+    readyBtn.textContent = 'Ready';
+    originalStart.parentNode.insertBefore(readyBtn, originalStart);
+    originalStart.style.display = 'none';
+
+    readyBtn.addEventListener('click', () => {
+      readyBtn.textContent = 'Waiting...';
+      readyBtn.disabled = true;
+      readyBtn.style.opacity = '0.7';
+      readyBtn.style.cursor = 'not-allowed';
+      
+      try {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        if (AudioContext) {
+          const ctx = new AudioContext();
+          ctx.resume();
+        }
+      } catch(e) {}
+
+      const status = document.getElementById('mp-status');
+      if (status) {
+        status.textContent = '⏳ Ready...';
+        status.style.background = 'rgba(52, 211, 153, 0.2)';
+      }
+
+      socket.emit('player_ready');
+    });
+
+    socket.on('game_start', () => {
+      readyBtn.style.display = 'none';
+      originalStart.style.display = ''; 
+      
+      const status = document.getElementById('mp-status');
+      if (status) {
+        status.textContent = '⚔️ Live';
+        status.style.background = 'rgba(168, 85, 247, 0.2)';
+      }
+
+      originalStart.click();
+    });
   }
 
   waitForIO(initMultiplayer);
 
   function initMultiplayer() {
-    const socket = io();
+    const socket = io(getSocketUrl());
     let opponentScore = 0;
     let myLastScore = 0;
     let gameEnded = false;
 
     socket.on('connect', () => {
-      socket.emit('player_ready');
+      socket.emit('rejoin_game_room', { code: roomCode, role: role });
     });
 
     // Create opponent score overlay bar
@@ -171,73 +228,33 @@
       const isHost = role === 'host';
       const myScore = isHost ? results.host.score : results.guest.score;
       const theirScore = isHost ? results.guest.score : results.host.score;
-      const myName = isHost ? results.host.name : results.guest.name;
-      const theirName = isHost ? results.guest.name : results.host.name;
       const iWon = (results.winner === 'host' && isHost) || (results.winner === 'guest' && !isHost);
       const isTie = results.winner === 'tie';
-      const scoreDiff = Math.abs(myScore - theirScore);
-      const gameName = gameNames[results.game] || results.game;
+
+      let msg = '';
+      if (iWon) msg = "🎉 You won!";
+      else if (isTie) msg = "🤝 It's a tie!";
+      else msg = "😤 Better luck next time!";
 
       const modal = document.createElement('div');
       modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.92);z-index:20000;display:flex;align-items:center;justify-content:center;';
 
       modal.innerHTML = `
-        <div style="background: linear-gradient(180deg, #0f182b 0%, #1a2847 100%); padding: 0; border-radius: 24px; border: 2px solid ${iWon ? '#fbbf24' : isTie ? '#a855f7' : '#f43f5e'}50; box-shadow: 0 30px 80px rgba(0,0,0,0.9); text-align: center; max-width: 500px; width: 92%; overflow: hidden;">
-          
-          <!-- Result Header -->
-          <div style="padding: 30px 40px 20px; background: linear-gradient(135deg, ${iWon ? 'rgba(251,191,36,0.15)' : isTie ? 'rgba(168,85,247,0.15)' : 'rgba(244,63,94,0.15)'}, transparent);">
-            <div style="font-size: 56px; margin-bottom: 8px;">${iWon ? '🏆' : isTie ? '🤝' : '💀'}</div>
-            <h2 style="margin: 0 0 4px; font-size: 32px; font-weight: 800; color: ${iWon ? '#fbbf24' : isTie ? '#a855f7' : '#f43f5e'};">
-              ${iWon ? 'VICTORY!' : isTie ? 'DRAW!' : 'DEFEAT!'}
-            </h2>
-            <p style="color: rgba(255,255,255,0.4); margin: 0; font-size: 13px;">${gameName} · ${settingsMode === 'elimination' ? 'Elimination' : 'Timed ' + settingsTime + 's'} · ${settingsDiff}</p>
-          </div>
-          
-          <!-- Score Comparison -->
-          <div style="padding: 24px 40px; display: flex; align-items: center; justify-content: center; gap: 20px;">
-            
-            <!-- Player 1 (You) -->
-            <div style="flex: 1; text-align: center;">
-              <div style="width: 56px; height: 56px; border-radius: 50%; background: linear-gradient(135deg, ${iWon ? '#fbbf24, #f59e0b' : '#64748b, #475569'}); margin: 0 auto 10px; display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: 800; color: #fff; ${iWon ? 'box-shadow: 0 0 20px rgba(251,191,36,0.4);' : ''}">${myName[0].toUpperCase()}</div>
-              <div style="font-weight: 700; color: #fff; font-size: 14px; margin-bottom: 4px;">${myName}</div>
-              <div style="font-size: 11px; color: rgba(255,255,255,0.4); margin-bottom: 8px;">YOU</div>
-              <div style="font-size: 48px; font-weight: 900; color: ${iWon ? '#fbbf24' : isTie ? '#a855f7' : '#f43f5e'}; line-height: 1;">${myScore}</div>
-              <div style="font-size: 11px; color: rgba(255,255,255,0.4); margin-top: 4px;">points</div>
-            </div>
-            
-            <!-- VS Divider -->
-            <div style="display: flex; flex-direction: column; align-items: center; gap: 6px;">
-              <div style="width: 1px; height: 30px; background: rgba(255,255,255,0.1);"></div>
-              <div style="font-size: 16px; font-weight: 800; color: rgba(255,255,255,0.3); padding: 6px 10px; background: rgba(255,255,255,0.05); border-radius: 8px;">VS</div>
-              <div style="width: 1px; height: 30px; background: rgba(255,255,255,0.1);"></div>
-            </div>
-            
-            <!-- Player 2 (Opponent) -->
-            <div style="flex: 1; text-align: center;">
-              <div style="width: 56px; height: 56px; border-radius: 50%; background: linear-gradient(135deg, ${!iWon && !isTie ? '#fbbf24, #f59e0b' : '#64748b, #475569'}); margin: 0 auto 10px; display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: 800; color: #fff; ${!iWon && !isTie ? 'box-shadow: 0 0 20px rgba(251,191,36,0.4);' : ''}">${theirName[0].toUpperCase()}</div>
-              <div style="font-weight: 700; color: #fff; font-size: 14px; margin-bottom: 4px;">${theirName}</div>
-              <div style="font-size: 11px; color: rgba(255,255,255,0.4); margin-bottom: 8px;">OPPONENT</div>
-              <div style="font-size: 48px; font-weight: 900; color: ${!iWon && !isTie ? '#fbbf24' : isTie ? '#a855f7' : '#38bdf8'}; line-height: 1;">${theirScore}</div>
-              <div style="font-size: 11px; color: rgba(255,255,255,0.4); margin-top: 4px;">points</div>
-            </div>
-          </div>
-          
-          <!-- Score Difference Banner -->
-          ${!isTie ? `
-          <div style="padding: 12px 40px; background: rgba(255,255,255,0.03); border-top: 1px solid rgba(255,255,255,0.06);">
-            <span style="font-size: 13px; color: rgba(255,255,255,0.5);">${iWon ? '🎉 You won' : '😤 You lost'} by </span>
-            <span style="font-size: 15px; font-weight: 700; color: ${iWon ? '#34d399' : '#f43f5e'};">${scoreDiff} points</span>
-          </div>
-          ` : ''}
-          
-          <!-- Action Buttons -->
-          <div style="padding: 20px 40px 28px; display: flex; gap: 12px; justify-content: center;">
-            <button onclick="window.location='/client/multiplayer.html'" style="flex: 1; padding: 14px 20px; border: none; border-radius: 12px; background: linear-gradient(135deg, #a855f7, #6366f1); color: #fff; font-weight: 700; font-size: 14px; cursor: pointer; transition: all 0.2s;">🔄 Play Again</button>
-            <button onclick="window.location='/client/index.html'" style="flex: 1; padding: 14px 20px; border: none; border-radius: 12px; background: rgba(255,255,255,0.08); color: #fff; font-weight: 600; font-size: 14px; cursor: pointer; border: 1px solid rgba(255,255,255,0.15); transition: all 0.2s;">🏠 Home</button>
+        <div style="background: linear-gradient(180deg, #0f182b 0%, #1a2847 100%); padding: 40px; border-radius: 24px; border: 2px solid ${iWon ? '#fbbf24' : isTie ? '#a855f7' : '#f43f5e'}50; text-align: center; max-width: 400px;">
+          <h2 style="margin: 0 0 10px; font-size: 32px; font-weight: 800; color: ${iWon ? '#fbbf24' : isTie ? '#a855f7' : '#f43f5e'};">
+            ${msg}
+          </h2>
+          <p style="color: #cbd5e1; font-size: 16px; margin-bottom: 20px;">Final Score: ${myScore} to ${theirScore}</p>
+          <div style="font-size: 13px; color: var(--muted); background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px;">
+            Redirecting to lobby in 4 seconds...
           </div>
         </div>
       `;
       document.body.appendChild(modal);
+
+      setTimeout(() => {
+        window.location.href = '/multiplayer.html';
+      }, 4000);
     }
 
     // Expose global API
@@ -282,14 +299,14 @@
       }
     }, 200);
 
-    // Apply settings and auto-start after page loads
+    // Apply settings and setup ready button after page loads
     if (document.readyState === 'complete') {
       applySettings();
-      autoStart();
+      setupReadyButton(socket);
     } else {
       window.addEventListener('load', () => {
         applySettings();
-        autoStart();
+        setupReadyButton(socket);
       });
     }
   }

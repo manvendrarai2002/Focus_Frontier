@@ -11,9 +11,18 @@ class MultiplayerClient {
     this.callbacks = {};
   }
 
+  _getSocketUrl() {
+    const configuredApiBase =
+      typeof API_BASE === 'string' && API_BASE.trim()
+        ? API_BASE.trim()
+        : (localStorage.getItem('api_base') || 'http://localhost:4000/api');
+
+    return configuredApiBase.replace(/\/api\/?$/, '');
+  }
+
   connect() {
     if (this.socket) return;
-    this.socket = io();
+    this.socket = io(this._getSocketUrl());
 
     this.socket.on('connect', () => {
       console.log('[mp] connected:', this.socket.id);

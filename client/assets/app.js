@@ -90,39 +90,47 @@ function downloadCsv(filename, rows, headers) {
   downloadBlob(filename, blob);
 }
 
-function savePrefs({ highContrast, fontScale }) {
-  if (typeof highContrast === 'boolean') localStorage.setItem('pref_highContrast', highContrast ? '1' : '0');
-  if (fontScale) localStorage.setItem('pref_fontScale', String(fontScale));
+/* ── Accessibility Preferences (server-synced) ── */
+
+function _currentPrefs() {
+  try { return JSON.parse(localStorage.getItem('pref_accessibility') || '{}'); }
+  catch { return {}; }
 }
 
-function applyPrefsFromStorage() {
-  const hc = localStorage.getItem('pref_highContrast') === '1';
-  document.body.classList.toggle('high-contrast', hc);
-  const fs = parseFloat(localStorage.getItem('pref_fontScale') || '1');
-  if (!isNaN(fs)) document.documentElement.style.fontSize = `${16 * fs}px`;
+function applyPrefs(prefs) {
+  const p = { highContrast: false, fontScale: 1, reducedMotion: false, ...prefs };
+  document.body.classList.toggle('high-contrast', p.highContrast);
+  document.body.classList.toggle('reduced-motion', p.reducedMotion);
+  document.documentElement.style.fontSize = `${16 * p.fontScale}px`;
+  localStorage.setItem('pref_accessibility', JSON.stringify(p));
 }
 
-function bindContrastToggle(buttonId) {
-  const btn = document.getElementById(buttonId);
-  if (!btn) return;
-  btn.addEventListener('click', () => {
-    const on = !document.body.classList.contains('high-contrast');
-    document.body.classList.toggle('high-contrast', on);
-    savePrefs({ highContrast: on });
-  });
+async function savePrefsToServer(prefs) {
+  const merged = { ..._currentPrefs(), ...prefs };
+  applyPrefs(merged);
+  if (localStorage.getItem('auth_token')) {
+    try { await api('/auth/preferences', { method: 'PUT', body: JSON.stringify({ preferences: merged }) }); }
+    catch (e) { console.warn('prefs save failed', e); }
+  }
 }
 
-function bindFontSlider(sliderId) {
-  const slider = document.getElementById(sliderId);
-  if (!slider) return;
-  slider.addEventListener('input', (e) => {
-    const v = parseFloat(e.target.value || '1');
-    if (!isNaN(v)) {
-      document.documentElement.style.fontSize = `${16 * v}px`;
-      savePrefs({ fontScale: v });
-    }
-  });
+async function loadServerPrefs() {
+  // First apply cached prefs instantly (prevents FOUC)
+  applyPrefs(_currentPrefs());
+  if (!localStorage.getItem('auth_token')) return;
+  try {
+    const data = await api('/auth/preferences', { method: 'GET' });
+    if (data.preferences) applyPrefs(data.preferences);
+  } catch { /* not logged in or network issue */ }
 }
+
+// Legacy shims for any existing callers
+function savePrefs({ highContrast, fontScale, reducedMotion }) {
+  savePrefsToServer({ highContrast, fontScale, reducedMotion });
+}
+function applyPrefsFromStorage() { applyPrefs(_currentPrefs()); }
+function bindContrastToggle() {}
+function bindFontSlider() {}
 
 async function handleAuth(form) {
   const email = form.querySelector('input[name=email]')?.value.trim();
@@ -134,6 +142,7 @@ async function handleAuth(form) {
     const data = await api(`/auth/${mode === 'register' ? 'register' : 'login'}`, { method: 'POST', body: JSON.stringify(payload) });
     localStorage.setItem('auth_token', data.token);
     localStorage.setItem('auth_user', JSON.stringify(data.user));
+    if (data.user.preferences) applyPrefs(data.user.preferences);
     toast('Signed in');
     window.location.href = 'index.html';
   } catch (e) {
@@ -148,14 +157,15 @@ function renderUserChip(targetSel) {
   if (!user) {
     target.innerHTML = '<a href="auth.html" class="chip">Login / Register</a>';
   } else {
-    target.innerHTML = `<span class="chip">${user.displayName || user.email}</span> <button class="btn secondary" id="logout-btn">Logout</button>`;
+    target.innerHTML = `<span class="chip">${user.displayName || user.email}</span> <a href="settings.html" class="btn secondary" style="font-size:13px;">⚙ Settings</a> <button class="btn secondary" id="logout-btn">Logout</button>`;
     const logout = document.getElementById('logout-btn');
     logout?.addEventListener('click', () => {
       localStorage.removeItem('auth_token');
       localStorage.removeItem('auth_user');
+      localStorage.removeItem('pref_accessibility');
       window.location.reload();
     });
   }
 }
 
-document.addEventListener('DOMContentLoaded', applyPrefsFromStorage);
+document.addEventListener('DOMContentLoaded', loadServerPrefs);

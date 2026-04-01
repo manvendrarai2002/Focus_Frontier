@@ -4,6 +4,7 @@
  */
 
 const rooms = new Map();
+import Match from './models/Match.js';
 
 function generateRoomCode() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -82,6 +83,26 @@ export function setupMultiplayer(io) {
       });
     });
 
+    // Rejoin room directly from the game page
+    socket.on('rejoin_game_room', (data) => {
+      const code = data?.code?.toUpperCase();
+      const room = rooms.get(code);
+      if (!room) return;
+
+      socket.join(code);
+      socket.roomCode = code;
+      const isHost = data.role === 'host';
+      socket.isHost = isHost;
+
+      if (isHost) {
+        room.host.id = socket.id;
+      } else if (room.guest) {
+        room.guest.id = socket.id;
+      }
+
+      console.log(`[mp] ${socket.id} rejoined room ${code} as ${data.role}`);
+    });
+
     // Host selects a game
     socket.on('select_game', (data, callback) => {
       const room = rooms.get(socket.roomCode);
@@ -93,6 +114,8 @@ export function setupMultiplayer(io) {
       room.settings = data.settings || {};
       room.seed = generateSeed();
       room.status = 'ready';
+      room.host.ready = false;
+      if (room.guest) room.guest.ready = false;
 
       io.to(socket.roomCode).emit('game_selected', {
         game: room.game,
@@ -168,7 +191,8 @@ export function setupMultiplayer(io) {
         const results = {
           host: { name: room.host.name, score: room.host.score },
           guest: { name: room.guest.name, score: room.guest.score },
-          game: room.game
+          game: room.game,
+          settings: room.settings
         };
 
         if (room.host.score > room.guest.score) {
@@ -178,6 +202,17 @@ export function setupMultiplayer(io) {
         } else {
           results.winner = 'tie';
         }
+
+        try {
+          const matchDoc = new Match({
+            game: room.game,
+            host: { name: room.host.name, score: room.host.score },
+            guest: { name: room.guest.name, score: room.guest.score },
+            winner: results.winner,
+            settings: room.settings
+          });
+          matchDoc.save().catch(err => console.error('[mp] err saving match:', err));
+        } catch(e) {}
 
         io.to(socket.roomCode).emit('game_results', results);
       }
@@ -214,8 +249,8 @@ export function setupMultiplayer(io) {
       // Notify the other player
       socket.to(code).emit('opponent_disconnected');
 
-      // Clean up the room
-      rooms.delete(code);
+      // Do NOT delete the room instantly to allow rejoining during page transitions.
+      // The 30m server cleanup task will harvest old rooms.
     });
   });
 
